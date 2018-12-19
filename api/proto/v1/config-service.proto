@@ -1,0 +1,27 @@
+syntax = "proto3";
+package v1;
+
+enum Status {
+    FAILED = 0;
+    OK = 1;
+}
+
+message Instance {
+    string namespace = 1;
+    string uid = 2;
+}
+
+message ConfigUpdateRequest{
+    string api = 1;
+    Instance deployment = 2;
+}
+
+message ConfigUpdateResponse{
+    string api = 1;
+    Status status = 2;
+    string message = 3;
+}
+
+service ConfigService {
+    rpc Update(ConfigUpdateRequest) returns (ConfigUpdateResponse);
+}
