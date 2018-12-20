@@ -1,7 +1,6 @@
 module code.geant.net/stash/scm/nmaas/nmaas-janitor
 
 require (
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/gogo/protobuf v1.2.0 // indirect
 	github.com/golang/protobuf v1.2.0
 	github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c // indirect
@@ -14,7 +13,7 @@ require (
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/xanzy/go-gitlab v0.12.0
 	golang.org/x/crypto v0.0.0-20181203042331-505ab145d0a9 // indirect
-	golang.org/x/net v0.0.0-20181217023233-e147a9138326 // indirect
+	golang.org/x/net v0.0.0-20181108082009-03003ca0c849
 	golang.org/x/time v0.0.0-20181108054448-85acf8d2951c // indirect
 	google.golang.org/grpc v1.17.0
 	gopkg.in/inf.v0 v0.9.1 // indirect
