@@ -9,6 +9,7 @@ enum Status {
 message Instance {
     string namespace = 1;
     string uid = 2;
+    string domain = 3;
 }
 
 message ConfigUpdateRequest{
@@ -23,5 +24,6 @@ message ConfigUpdateResponse{
 }
 
 service ConfigService {
+    rpc Create(ConfigUpdateRequest) returns (ConfigUpdateResponse);
     rpc Update(ConfigUpdateRequest) returns (ConfigUpdateResponse);
 }

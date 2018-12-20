@@ -6,7 +6,8 @@
 * kubernetes/client-go
 * go-gitlab
 ## Features
-* Updating deployment ConfigMap on-demand
+* Creating deployment ConfigMap when configuration is loaded on gitlab
+* Updating deployment ConfigMap on demand
 
 ## Build requirements
 go >= 1.11\
