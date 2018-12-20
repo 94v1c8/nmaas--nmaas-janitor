@@ -17,7 +17,6 @@ import (
 type Config struct {
 	GRPCPort string
 	GitlabToken string
-	GitlabUser string
 	GitlabURL string
 }
 
@@ -28,7 +27,6 @@ func RunServer() error {
 	// get configuration
 	var cfg Config
 	flag.StringVar(&cfg.GRPCPort, "port", "", "gRPC port to bind")
-	flag.StringVar(&cfg.GitlabUser, "user", "", "Gitlab user")
 	flag.StringVar(&cfg.GitlabToken, "token", "", "Gitlab token")
 	flag.StringVar(&cfg.GitlabURL, "url", "", "Gitlab API URL")
 	flag.Parse()
