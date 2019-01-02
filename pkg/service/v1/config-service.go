@@ -3,10 +3,12 @@ package v1
 import (
 	"context"
 	"github.com/xanzy/go-gitlab"
+	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	kube "k8s.io/client-go/kubernetes/typed/core/v1"
-	apiv1 "k8s.io/api/core/v1"
+	"log"
+	"strconv"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -51,7 +53,9 @@ func (s *configServiceServer) FindGitlabProjectId(api *gitlab.Client, uid string
 	//Find exact group
 	groups, _, err := s.gitAPI.Groups.SearchGroup(domain)
 	if len(groups) != 1 || err != nil {
-		return -1, status.Errorf(codes.NotFound, "Gitlab Group for given namespace does not exist")
+		log.Fatal("Found " + strconv.Itoa(len(groups)) + "groups")
+		log.Fatal(err)
+		return -1, status.Errorf(codes.NotFound, "Gitlab Group for given domain does not exist")
 	}
 
 	//List group projects
