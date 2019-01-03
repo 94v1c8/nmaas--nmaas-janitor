@@ -80,6 +80,7 @@ func (s *configServiceServer) PrepareDataJsonFromRepository(api *gitlab.Client, 
 	//List files
 	tree, _, err := s.gitAPI.Repositories.ListTree(repoId, nil)
 	if err != nil || len(tree) == 0 {
+		log.Print(err)
 		return nil, status.Errorf(codes.NotFound, "Cannot find any config files")
 	}
 
@@ -97,9 +98,10 @@ func (s *configServiceServer) PrepareDataJsonFromRepository(api *gitlab.Client, 
 		if file.Type != "blob" {
 			continue
 		}
-
-		data, _, err := s.gitAPI.Repositories.RawBlobContent(repoId, file.ID)
+		opt := &gitlab.GetRawFileOptions{Ref: gitlab.String("master")}
+		data, _, err := s.gitAPI.RepositoryFiles.GetRawFile(repoId, file.Name, opt)
 		if err != nil {
+			log.Print(err)
 			return nil, status.Errorf(codes.Internal, "Error while reading file from Gitlab!")
 		}
 
@@ -119,21 +121,30 @@ func (s *configServiceServer) PrepareDataJsonFromRepository(api *gitlab.Client, 
 
 //Parse repository files into string:string map for configmap creator
 func (s *configServiceServer) PrepareDataMapFromRepository(api *gitlab.Client, repoId int) (map[string][]byte, error) {
+
+	compiledMap := make(map[string][]byte)
+
 	//List files
 	tree, _, err := s.gitAPI.Repositories.ListTree(repoId, nil)
-	if err != nil || len(tree) == 0 {
+	if err != nil {
+		log.Print(err)
 		return nil, status.Errorf(codes.NotFound, "Cannot find any config files")
+	}
+	if len(tree) == 0 {
+		log.Printf("There are no files to config in repo %d", repoId)
+		return compiledMap, nil
 	}
 
 	//Start parsing
-	compiledMap := make(map[string][]byte)
 	for _, file := range tree {
 		if file.Type != "blob" {
 			continue
 		}
 
-		data, _, err := s.gitAPI.RepositoryFiles.GetRawFile(repoId, file.Name, nil)
+		opt := &gitlab.GetRawFileOptions{Ref: gitlab.String("master")}
+		data, _, err := s.gitAPI.RepositoryFiles.GetRawFile(repoId, file.Name, opt)
 		if err != nil {
+			log.Print(err)
 			return nil, status.Errorf(codes.Internal, "Error while reading file from Gitlab!")
 		}
 
