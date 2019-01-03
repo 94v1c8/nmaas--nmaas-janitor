@@ -29,4 +29,5 @@ message ConfigUpdateResponse{
 service ConfigService {
     rpc Create(ConfigUpdateRequest) returns (ConfigUpdateResponse);
     rpc Update(ConfigUpdateRequest) returns (ConfigUpdateResponse);
+    rpc Delete(ConfigUpdateRequest) returns (ConfigUpdateResponse);
 }

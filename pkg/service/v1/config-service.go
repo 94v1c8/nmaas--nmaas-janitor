@@ -169,6 +169,11 @@ func (s *configServiceServer) Create(ctx context.Context, req *v1.ConfigUpdateRe
 		return s.PrepareConfigUpdateResponse(v1.Status_FAILED, "Cannot find corresponding gitlab assets"), err
 	}
 
+	//check if given k8s namespace exists
+	_, err = s.kubeAPI.Namespaces().Get(depl.Namespace, metav1.GetOptions{})
+	if err != nil {
+		return s.PrepareConfigUpdateResponse(v1.Status_FAILED, "Namespace not found!"), err
+	}
 
 	cm := apiv1.ConfigMap{}
 	cm.SetName(depl.Uid)
@@ -226,4 +231,34 @@ func (s *configServiceServer) Update(ctx context.Context, req *v1.ConfigUpdateRe
 	}
 
 	return s.PrepareConfigUpdateResponse(v1.Status_OK, "ConfigMap updated successfully"), nil
+}
+
+//Delete configmap for instance
+func (s *configServiceServer) Delete(ctx context.Context, req *v1.ConfigUpdateRequest) (*v1.ConfigUpdateResponse, error) {
+	// check if the API version requested by client is supported by server
+	if err := s.checkAPI(req.Api); err != nil {
+		return nil, err
+	}
+
+	depl := req.Deployment
+
+	//check if given k8s namespace exists
+	_, err := s.kubeAPI.Namespaces().Get(depl.Namespace, metav1.GetOptions{})
+	if err != nil {
+		return s.PrepareConfigUpdateResponse(v1.Status_FAILED, "Namespace not found!"), err
+	}
+
+	//check if configmap exist
+	_, err = s.kubeAPI.ConfigMaps(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
+	if err != nil {
+		return s.PrepareConfigUpdateResponse(v1.Status_FAILED,"ConfigMap not found or is unavailable"), err
+	}
+
+	//delete configmap
+	err = s.kubeAPI.ConfigMaps(depl.Namespace).Delete(depl.Uid, &metav1.DeleteOptions{})
+	if err != nil {
+		return s.PrepareConfigUpdateResponse(v1.Status_FAILED, "Error while removing configmap!"), err
+	}
+
+	return s.PrepareConfigUpdateResponse(v1.Status_OK, "ConfigMap deleted successfully"), nil
 }
