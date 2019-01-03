@@ -57,25 +57,22 @@ func (s *configServiceServer) FindGitlabProjectId(api *gitlab.Client, uid string
 	}
 
 	//List group projects
-	projs := groups[0].Projects
-	if len(projs) == 0 {
+	projs, _, err := s.gitAPI.Groups.ListGroupProjects(groups[0].ID, nil)
+	if err != nil || len(projs) == 0 {
+		log.Printf("Group %s is empty or unaccessible", groups[0].Name)
 		return -1, status.Errorf(codes.NotFound, "Project containing config not found on Gitlab")
 	}
+
+	log.Printf("Lookup for project uid: %s", uid)
 
 	//Find our project in group projects list
-	found := false
-	proj := gitlab.Project{}
 	for _, proj := range projs {
 		if proj.Name == uid {
-			found = true
-			break
+			return proj.ID, nil
 		}
 	}
-	if !found {
-		return -1, status.Errorf(codes.NotFound, "Project containing config not found on Gitlab")
-	}
 
-	return proj.ID, nil
+	return -1, status.Errorf(codes.NotFound, "Project containing config not found on Gitlab")
 }
 
 //Parse repository files into kubernetes json data part for patching
