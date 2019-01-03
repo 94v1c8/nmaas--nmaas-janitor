@@ -132,7 +132,7 @@ func (s *configServiceServer) PrepareDataMapFromRepository(api *gitlab.Client, r
 			continue
 		}
 
-		data, _, err := s.gitAPI.Repositories.RawBlobContent(repoId, file.ID)
+		data, _, err := s.gitAPI.RepositoryFiles.GetRawFile(repoId, file.Name, nil)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "Error while reading file from Gitlab!")
 		}
