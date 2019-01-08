@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"encoding/base64"
 	"github.com/xanzy/go-gitlab"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -63,8 +64,6 @@ func (s *configServiceServer) FindGitlabProjectId(api *gitlab.Client, uid string
 		return -1, status.Errorf(codes.NotFound, "Project containing config not found on Gitlab")
 	}
 
-	log.Printf("Lookup for project uid: %s", uid)
-
 	//Find our project in group projects list
 	for _, proj := range projs {
 		if proj.Name == uid {
@@ -87,10 +86,10 @@ func (s *configServiceServer) PrepareDataJsonFromRepository(api *gitlab.Client, 
 	numFiles := len(tree)
 
 	//create helper strings
-	mapStart := []byte("\"data\": {\"")
+	mapStart := []byte("{\"binaryData\": {\"")
 	mapAfterName := []byte("\": \"")
 	mapNextData := []byte("\", \"")
-	mapAfterLast := []byte("\"}")
+	mapAfterLast := []byte("\"}}")
 
 	//Start parsing
 	compiledMap := mapStart
@@ -107,7 +106,7 @@ func (s *configServiceServer) PrepareDataJsonFromRepository(api *gitlab.Client, 
 
 		compiledMap = append(compiledMap, file.Name...)
 		compiledMap = append(compiledMap, mapAfterName...)
-		compiledMap = append(compiledMap, data...)
+		compiledMap = append(compiledMap, base64.StdEncoding.EncodeToString(data)...)
 
 		if numFiles-1 == i { //it's last element
 			compiledMap = append(compiledMap, mapAfterLast...)
@@ -225,7 +224,7 @@ func (s *configServiceServer) Update(ctx context.Context, req *v1.ConfigUpdateRe
 	}
 
 	//patch configmap
-	_, err = s.kubeAPI.ConfigMaps(depl.Namespace).Patch(depl.Uid, types.JSONPatchType, data)
+	_, err = s.kubeAPI.ConfigMaps(depl.Namespace).Patch(depl.Uid, types.MergePatchType, data)
 	if err != nil {
 		return s.PrepareConfigUpdateResponse(v1.Status_FAILED, "Error while patching configmap!"), err
 	}
