@@ -78,7 +78,7 @@ func (s *configServiceServer) FindGitlabProjectId(api *gitlab.Client, uid string
 func (s *configServiceServer) PrepareDataJsonFromRepository(api *gitlab.Client, repoId int) ([]byte, error) {
 	//List files
 	tree, _, err := s.gitAPI.Repositories.ListTree(repoId, nil)
-	if err != nil || len(tree) == 0 {
+	if err != nil {
 		log.Print(err)
 		return nil, status.Errorf(codes.NotFound, "Cannot find any config files")
 	}
@@ -108,12 +108,11 @@ func (s *configServiceServer) PrepareDataJsonFromRepository(api *gitlab.Client, 
 		compiledMap = append(compiledMap, mapAfterName...)
 		compiledMap = append(compiledMap, base64.StdEncoding.EncodeToString(data)...)
 
-		if numFiles-1 == i { //it's last element
-			compiledMap = append(compiledMap, mapAfterLast...)
-		} else {
+		if numFiles-1 != i { //it's not last element
 			compiledMap = append(compiledMap, mapNextData...)
 		}
 	}
+	compiledMap = append(compiledMap, mapAfterLast...)
 
 	return compiledMap, nil
 }
@@ -129,10 +128,10 @@ func (s *configServiceServer) PrepareDataMapFromRepository(api *gitlab.Client, r
 		log.Print(err)
 		return nil, status.Errorf(codes.NotFound, "Cannot find any config files")
 	}
-	if len(tree) == 0 {
-		log.Printf("There are no files to config in repo %d", repoId)
-		return compiledMap, nil
-	}
+	//if len(tree) == 0 {
+	//	log.Printf("There are no files to config in repo %d", repoId)
+	//	return compiledMap, nil
+	//}
 
 	//Start parsing
 	for _, file := range tree {
