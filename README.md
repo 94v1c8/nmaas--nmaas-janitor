@@ -5,18 +5,11 @@
 * gRPC
 * kubernetes/client-go
 * go-gitlab
+
 ## Features
 * Creating deployment ConfigMap when configuration is loaded on gitlab
 * Updating deployment ConfigMap on demand
 
-## Build requirements
-go >= 1.11\
-protoc  == 3.6.0 (BEWARE! do not use 3.6.1 or any other "latest" versions)
-
-## Building
-From working directory, perform:
-
-    ./third-party/protoc-gen.sh
-    cd pkg/cmd/server
-    go build .
-    
+## Deploying
+The provided docker image is a two-stage build image. 
+You don't have to compile protoc yourself, nor configure local golang environment. Just run `docker build`, and image will do all the work for you
