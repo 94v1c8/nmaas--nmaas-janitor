@@ -24,8 +24,24 @@ type configServiceServer struct {
 	gitAPI *gitlab.Client
 }
 
+type basicAuthServiceServer struct {
+	kubeAPI kube.CoreV1Interface
+}
+
+type certManagerServiceServer struct {
+	kubeAPI kube.CoreV1Interface
+}
+
 func NewConfigServiceServer(kubeAPI kube.CoreV1Interface, gitAPI *gitlab.Client) v1.ConfigServiceServer {
 	return &configServiceServer{kubeAPI: kubeAPI, gitAPI: gitAPI}
+}
+
+func NewBasicAuthServiceServer(kubeAPI kube.CoreV1Interface) v1.BasicAuthServiceServer {
+	return &basicAuthServiceServer{kubeAPI: kubeAPI}
+}
+
+func NewCertManagerServiceServer(kubeAPI kube.CoreV1Interface) v1.CertManagerServiceServer {
+	return &certManagerServiceServer{kubeAPI: kubeAPI}
 }
 
 func (s *configServiceServer) checkAPI(api string) error {
@@ -39,8 +55,8 @@ func (s *configServiceServer) checkAPI(api string) error {
 }
 
 //Prepare response
-func (s *configServiceServer) PrepareConfigUpdateResponse(status v1.Status, message string) *v1.ConfigUpdateResponse {
-	return &v1.ConfigUpdateResponse{
+func (s *configServiceServer) PrepareConfigUpdateResponse(status v1.Status, message string) *v1.ServiceResponse {
+	return &v1.ServiceResponse{
 		Api: apiVersion,
 		Status: status,
 		Message: message,
@@ -154,7 +170,7 @@ func (s *configServiceServer) PrepareDataMapFromRepository(api *gitlab.Client, r
 }
 
 //Create new configmap
-func (s *configServiceServer) Create(ctx context.Context, req *v1.ConfigUpdateRequest) (*v1.ConfigUpdateResponse, error) {
+func (s *configServiceServer) Create(ctx context.Context, req *v1.InstanceRequest) (*v1.ServiceResponse, error) {
 	// check if the API version requested by client is supported by server
 	if err := s.checkAPI(req.Api); err != nil {
 		return nil, err
@@ -191,7 +207,7 @@ func (s *configServiceServer) Create(ctx context.Context, req *v1.ConfigUpdateRe
 }
 
 // Update configmap for instance
-func (s *configServiceServer) Update(ctx context.Context, req *v1.ConfigUpdateRequest) (*v1.ConfigUpdateResponse, error) {
+func (s *configServiceServer) Update(ctx context.Context, req *v1.InstanceRequest) (*v1.ServiceResponse, error) {
 	// check if the API version requested by client is supported by server
 	if err := s.checkAPI(req.Api); err != nil {
 		return nil, err
@@ -232,7 +248,7 @@ func (s *configServiceServer) Update(ctx context.Context, req *v1.ConfigUpdateRe
 }
 
 //Delete configmap for instance
-func (s *configServiceServer) Delete(ctx context.Context, req *v1.ConfigUpdateRequest) (*v1.ConfigUpdateResponse, error) {
+func (s *configServiceServer) Delete(ctx context.Context, req *v1.InstanceRequest) (*v1.ServiceResponse, error) {
 	// check if the API version requested by client is supported by server
 	if err := s.checkAPI(req.Api); err != nil {
 		return nil, err
@@ -259,4 +275,8 @@ func (s *configServiceServer) Delete(ctx context.Context, req *v1.ConfigUpdateRe
 	}
 
 	return s.PrepareConfigUpdateResponse(v1.Status_OK, "ConfigMap deleted successfully"), nil
+}
+
+func (s *basicAuthServiceServer) Create(ctx context.Context, req *v1.InstanceCredentialsRequest) (*v1.ServiceResponse, error) {
+	
 }
