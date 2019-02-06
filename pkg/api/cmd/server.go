@@ -53,7 +53,9 @@ func RunServer() error {
 		log.Fatal(err)
 	}
 
-	v1API := v1.NewConfigServiceServer(kubeAPI, gitAPI)
+	confAPI := v1.NewConfigServiceServer(kubeAPI, gitAPI)
+	authAPI := v1.NewBasicAuthServiceServer(kubeAPI)
+	certAPI := v1.NewCertManagerServiceServer(kubeAPI)
 
-	return grpc.RunServer(ctx, v1API, cfg.GRPCPort)
+	return grpc.RunServer(ctx, confAPI, authAPI, certAPI, cfg.GRPCPort)
 }

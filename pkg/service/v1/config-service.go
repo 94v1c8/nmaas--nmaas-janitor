@@ -278,5 +278,17 @@ func (s *configServiceServer) Delete(ctx context.Context, req *v1.InstanceReques
 }
 
 func (s *basicAuthServiceServer) Create(ctx context.Context, req *v1.InstanceCredentialsRequest) (*v1.ServiceResponse, error) {
-	
+
+}
+
+func (s *basicAuthServiceServer) Update(ctx context.Context, req *v1.InstanceCredentialsRequest) (*v1.ServiceResponse, error) {
+
+}
+
+func (s *basicAuthServiceServer) Delete(ctx context.Context, req *v1.InstanceRequest) (*v1.ServiceResponse, error) {
+
+}
+
+func (s *certManagerServiceServer) Delete(ctx context.Context, req *v1.InstanceRequest) (*v1.ServiceResponse, error) {
+
 }

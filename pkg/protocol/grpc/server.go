@@ -11,15 +11,17 @@ import (
 	"code.geant.net/stash/scm/nmaas/nmaas-janitor/pkg/api/v1"
 )
 
-func RunServer(ctx context.Context, v1API v1.ConfigServiceServer, port string) error {
+func RunServer(ctx context.Context, confAPI v1.ConfigServiceServer, authAPI v1.BasicAuthServiceServer, certAPI v1.CertManagerServiceServer, port string) error {
 	listen, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		return err
 	}
 
-	// register service
+	// register services
 	server := grpc.NewServer()
-	v1.RegisterConfigServiceServer(server, v1API)
+	v1.RegisterConfigServiceServer(server, confAPI)
+	v1.RegisterBasicAuthServiceServer(server, authAPI)
+	v1.RegisterCertManagerServiceServer(server, certAPI)
 
 	// graceful shutdown
 	c := make(chan os.Signal, 1)
