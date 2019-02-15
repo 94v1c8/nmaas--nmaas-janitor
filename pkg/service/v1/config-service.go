@@ -33,6 +33,10 @@ type certManagerServiceServer struct {
 	kubeAPI kube.CoreV1Interface
 }
 
+type readinessServiceServer struct {
+	kubeAPI kube.CoreV1Interface
+}
+
 func NewConfigServiceServer(kubeAPI kube.CoreV1Interface, gitAPI *gitlab.Client) v1.ConfigServiceServer {
 	return &configServiceServer{kubeAPI: kubeAPI, gitAPI: gitAPI}
 }
@@ -43,6 +47,10 @@ func NewBasicAuthServiceServer(kubeAPI kube.CoreV1Interface) v1.BasicAuthService
 
 func NewCertManagerServiceServer(kubeAPI kube.CoreV1Interface) v1.CertManagerServiceServer {
 	return &certManagerServiceServer{kubeAPI: kubeAPI}
+}
+
+func NewReadinessServiceServer(kubeAPI kube.CoreV1Interface) v1.ReadinessServiceServer {
+	return &readinessServiceServer{kubeAPI: kubeAPI}
 }
 
 func checkAPI(api string) error {
@@ -377,4 +385,46 @@ func (s *certManagerServiceServer) DeleteIfExists(ctx context.Context, req *v1.I
 	}
 
 	return prepareResponse(v1.Status_OK, "Secret deleted successfully"), nil
+}
+
+func (s *readinessServiceServer) CheckIfReady(ctx context.Context, req *v1.InstanceRequest) (*v1.ServiceResponse, error) {
+	// check if the API version requested by client is supported by server
+	if err := checkAPI(req.Api); err != nil {
+		return nil, err
+	}
+
+	depl := req.Deployment
+
+	//check if given k8s namespace exists
+	_, err := s.kubeAPI.Namespaces().Get(depl.Namespace, metav1.GetOptions{})
+	if err != nil {
+		return prepareResponse(v1.Status_FAILED, "Namespace not found!"), err
+	}
+
+	app, err := s.kubeAPI.ReplicationControllers(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
+	if err != nil {
+		return prepareResponse(v1.Status_FAILED, "Deployment not found!"), err
+	}
+
+	if *app.Spec.Replicas == app.Status.ReadyReplicas {
+		return prepareResponse(v1.Status_OK, "Deployment is ready"), nil
+	}
+
+	pod, err := s.kubeAPI.Pods(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
+	if err != nil {
+		return prepareResponse(v1.Status_FAILED, "Pod not found!"), err
+	}
+
+	switch pod.Status.Phase {
+	case apiv1.PodUnknown:
+	case apiv1.PodFailed:
+	default:
+		return prepareResponse(v1.Status_FAILED, "Pod is in wrong state or has crashed"), nil
+	case apiv1.PodPending:
+		return prepareResponse(v1.Status_PENDING, "Pod is pending"), nil
+	case apiv1.PodRunning:
+		return prepareResponse(v1.Status_PENDING, "Pod has not initialized yet"), nil
+	}
+
+	return prepareResponse(v1.Status_PENDING, "Unknown status"), err
 }
