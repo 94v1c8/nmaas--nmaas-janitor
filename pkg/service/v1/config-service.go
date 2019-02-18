@@ -410,21 +410,21 @@ func (s *readinessServiceServer) CheckIfReady(ctx context.Context, req *v1.Insta
 		return prepareResponse(v1.Status_OK, "Deployment is ready"), nil
 	}
 
-	pod, err := s.kubeAPI.Pods(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
-	if err != nil {
-		return prepareResponse(v1.Status_FAILED, "Pod not found!"), err
-	}
+	//pod, err := s.kubeAPI
+	//if err != nil {
+	//	return prepareResponse(v1.Status_FAILED, "Pod not found!"), err
+	//}
+	//
+	//switch pod.Status.Phase {
+	//case apiv1.PodUnknown:
+	//case apiv1.PodFailed:
+	//default:
+	//	return prepareResponse(v1.Status_FAILED, "Pod is in wrong state or has crashed"), nil
+	//case apiv1.PodPending:
+	//	return prepareResponse(v1.Status_PENDING, "Pod is pending"), nil
+	//case apiv1.PodRunning:
+	//	return prepareResponse(v1.Status_PENDING, "Pod has not initialized yet"), nil
+	//}
 
-	switch pod.Status.Phase {
-	case apiv1.PodUnknown:
-	case apiv1.PodFailed:
-	default:
-		return prepareResponse(v1.Status_FAILED, "Pod is in wrong state or has crashed"), nil
-	case apiv1.PodPending:
-		return prepareResponse(v1.Status_PENDING, "Pod is pending"), nil
-	case apiv1.PodRunning:
-		return prepareResponse(v1.Status_PENDING, "Pod has not initialized yet"), nil
-	}
-
-	return prepareResponse(v1.Status_PENDING, "Unknown status"), err
+	return prepareResponse(v1.Status_PENDING, "Waiting for deployment"), err
 }
