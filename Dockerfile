@@ -1,6 +1,7 @@
 FROM golang:1.11.4 as builder
 WORKDIR /
 RUN apt-get update && apt-get install unzip
+RUN uname -a
 RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v3.6.0/protoc-3.6.0-linux-x86_64.zip
 RUN unzip protoc-3.6.0-linux-x86_64.zip -d /
 WORKDIR /build
