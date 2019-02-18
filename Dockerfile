@@ -1,7 +1,6 @@
 FROM golang:1.11.4 as builder
 WORKDIR /
 RUN apt-get update && apt-get install unzip
-RUN uname -a
 RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v3.6.0/protoc-3.6.0-linux-x86_64.zip
 RUN unzip protoc-3.6.0-linux-x86_64.zip -d /
 WORKDIR /build
@@ -10,6 +9,7 @@ COPY pkg/ pkg
 COPY third_party/ third_party
 COPY go.mod/ .
 RUN go get -u github.com/golang/protobuf/protoc-gen-go
+RUN mkdir -p /build/pkg/api/v1
 RUN protoc --proto_path=/build/api/proto/v1 --proto_path=/build/third_party --go_out=plugins=grpc:/build/pkg/api/v1 config-service.proto
 WORKDIR /build/pkg/cmd/server
 RUN CGO_ENABLED=0 GOOS=linux go build
