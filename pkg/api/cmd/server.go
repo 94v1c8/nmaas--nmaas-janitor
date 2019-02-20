@@ -44,8 +44,8 @@ func RunServer() error {
     if err != nil {
         log.Fatal(err)
     }
-	kubeAPI := clientset.CoreV1()
-	
+	kubeAPI := clientset
+
 	//Initialize Gitlab API
 	gitAPI := gitlab.NewClient(nil, cfg.GitlabToken)
 	err = gitAPI.SetBaseURL(cfg.GitlabURL)

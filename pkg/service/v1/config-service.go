@@ -3,15 +3,15 @@ package v1
 import (
 	"context"
 	"encoding/base64"
-	"os/exec"
 	"github.com/xanzy/go-gitlab"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	kube "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/kubernetes"
 	"log"
+	"os/exec"
 
 	"code.geant.net/stash/scm/nmaas/nmaas-janitor/pkg/api/v1"
 )
@@ -21,35 +21,35 @@ const (
 )
 
 type configServiceServer struct {
-	kubeAPI kube.CoreV1Interface
+	kubeAPI *kubernetes.Clientset
 	gitAPI *gitlab.Client
 }
 
 type basicAuthServiceServer struct {
-	kubeAPI kube.CoreV1Interface
+	kubeAPI *kubernetes.Clientset
 }
 
 type certManagerServiceServer struct {
-	kubeAPI kube.CoreV1Interface
+	kubeAPI *kubernetes.Clientset
 }
 
 type readinessServiceServer struct {
-	kubeAPI kube.CoreV1Interface
+	kubeAPI *kubernetes.Clientset
 }
 
-func NewConfigServiceServer(kubeAPI kube.CoreV1Interface, gitAPI *gitlab.Client) v1.ConfigServiceServer {
+func NewConfigServiceServer(kubeAPI *kubernetes.Clientset, gitAPI *gitlab.Client) v1.ConfigServiceServer {
 	return &configServiceServer{kubeAPI: kubeAPI, gitAPI: gitAPI}
 }
 
-func NewBasicAuthServiceServer(kubeAPI kube.CoreV1Interface) v1.BasicAuthServiceServer {
+func NewBasicAuthServiceServer(kubeAPI *kubernetes.Clientset) v1.BasicAuthServiceServer {
 	return &basicAuthServiceServer{kubeAPI: kubeAPI}
 }
 
-func NewCertManagerServiceServer(kubeAPI kube.CoreV1Interface) v1.CertManagerServiceServer {
+func NewCertManagerServiceServer(kubeAPI *kubernetes.Clientset) v1.CertManagerServiceServer {
 	return &certManagerServiceServer{kubeAPI: kubeAPI}
 }
 
-func NewReadinessServiceServer(kubeAPI kube.CoreV1Interface) v1.ReadinessServiceServer {
+func NewReadinessServiceServer(kubeAPI *kubernetes.Clientset) v1.ReadinessServiceServer {
 	return &readinessServiceServer{kubeAPI: kubeAPI}
 }
 
@@ -193,13 +193,13 @@ func (s *configServiceServer) CreateOrReplace(ctx context.Context, req *v1.Insta
 	}
 
 	//check if given k8s namespace exists
-	_, err = s.kubeAPI.Namespaces().Get(depl.Namespace, metav1.GetOptions{})
+	_, err = s.kubeAPI.CoreV1().Namespaces().Get(depl.Namespace, metav1.GetOptions{})
 	if err != nil {
 		return prepareResponse(v1.Status_FAILED, "Namespace not found!"), err
 	}
 
 	//check if configmap already exists
-	_, err = s.kubeAPI.ConfigMaps(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
+	_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
 	if err != nil { //Not exists, we create new
 		cm := apiv1.ConfigMap{}
 		cm.SetName(depl.Uid)
@@ -208,7 +208,7 @@ func (s *configServiceServer) CreateOrReplace(ctx context.Context, req *v1.Insta
 		if err != nil {
 			return prepareResponse(v1.Status_FAILED, "Failed to retrieve data from repository"), err
 		}
-		_, err = s.kubeAPI.ConfigMaps(depl.Namespace).Create(&cm)
+		_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Create(&cm)
 		if err != nil {
 			return prepareResponse(v1.Status_FAILED, "Failed to create ConfigMap"), err
 		}
@@ -221,7 +221,7 @@ func (s *configServiceServer) CreateOrReplace(ctx context.Context, req *v1.Insta
 		}
 
 		//patch configmap
-		_, err = s.kubeAPI.ConfigMaps(depl.Namespace).Patch(depl.Uid, types.MergePatchType, data)
+		_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Patch(depl.Uid, types.MergePatchType, data)
 		if err != nil {
 			return prepareResponse(v1.Status_FAILED, "Error while patching configmap!"), err
 		}
@@ -240,19 +240,19 @@ func (s *configServiceServer) DeleteIfExists(ctx context.Context, req *v1.Instan
 	depl := req.Deployment
 
 	//check if given k8s namespace exists
-	_, err := s.kubeAPI.Namespaces().Get(depl.Namespace, metav1.GetOptions{})
+	_, err := s.kubeAPI.CoreV1().Namespaces().Get(depl.Namespace, metav1.GetOptions{})
 	if err != nil {
 		return prepareResponse(v1.Status_FAILED, "Namespace not found!"), err
 	}
 
 	//check if configmap exist
-	_, err = s.kubeAPI.ConfigMaps(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
+	_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
 	if err != nil {
 		return prepareResponse(v1.Status_OK,"ConfigMap not exists or is unavailable"), nil
 	}
 
 	//delete configmap
-	err = s.kubeAPI.ConfigMaps(depl.Namespace).Delete(depl.Uid, &metav1.DeleteOptions{})
+	err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Delete(depl.Uid, &metav1.DeleteOptions{})
 	if err != nil {
 		return prepareResponse(v1.Status_FAILED, "Error while removing configmap!"), err
 	}
@@ -302,7 +302,7 @@ func (s *basicAuthServiceServer) CreateOrReplace(ctx context.Context, req *v1.In
 	depl := req.Instance
 
 	//check if given k8s namespace exists
-	_, err := s.kubeAPI.Namespaces().Get(depl.Namespace, metav1.GetOptions{})
+	_, err := s.kubeAPI.CoreV1().Namespaces().Get(depl.Namespace, metav1.GetOptions{})
 	if err != nil {
 		return prepareResponse(v1.Status_FAILED, "Namespace not found!"), err
 	}
@@ -317,7 +317,7 @@ func (s *basicAuthServiceServer) CreateOrReplace(ctx context.Context, req *v1.In
 	}
 
 	//commit secret
-	_, err = s.kubeAPI.Secrets(depl.Namespace).Create(&secret)
+	_, err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Create(&secret)
 	if err != nil {
 		return prepareResponse(v1.Status_FAILED, "Error while creating secret!"), err
 	}
@@ -334,7 +334,7 @@ func (s *basicAuthServiceServer) DeleteIfExists(ctx context.Context, req *v1.Ins
 	depl := req.Deployment
 
 	//check if given k8s namespace exists
-	_, err := s.kubeAPI.Namespaces().Get(depl.Namespace, metav1.GetOptions{})
+	_, err := s.kubeAPI.CoreV1().Namespaces().Get(depl.Namespace, metav1.GetOptions{})
 	if err != nil {
 		return prepareResponse(v1.Status_FAILED, "Namespace not found!"), err
 	}
@@ -342,13 +342,13 @@ func (s *basicAuthServiceServer) DeleteIfExists(ctx context.Context, req *v1.Ins
 	secretName := getAuthSecretName(depl.Uid)
 
 	//check if secret exist
-	_, err = s.kubeAPI.Secrets(depl.Namespace).Get(secretName, metav1.GetOptions{})
+	_, err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Get(secretName, metav1.GetOptions{})
 	if err != nil {
 		return prepareResponse(v1.Status_OK,"Secret does not exist"), nil
 	}
 
 	//delete secret
-	err = s.kubeAPI.Secrets(depl.Namespace).Delete(secretName, &metav1.DeleteOptions{})
+	err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Delete(secretName, &metav1.DeleteOptions{})
 	if err != nil {
 		return prepareResponse(v1.Status_FAILED, "Error while removing secret!"), err
 	}
@@ -365,7 +365,7 @@ func (s *certManagerServiceServer) DeleteIfExists(ctx context.Context, req *v1.I
 	depl := req.Deployment
 
 	//check if given k8s namespace exists
-	_, err := s.kubeAPI.Namespaces().Get(depl.Namespace, metav1.GetOptions{})
+	_, err := s.kubeAPI.CoreV1().Namespaces().Get(depl.Namespace, metav1.GetOptions{})
 	if err != nil {
 		return prepareResponse(v1.Status_FAILED, "Namespace not found!"), err
 	}
@@ -373,13 +373,13 @@ func (s *certManagerServiceServer) DeleteIfExists(ctx context.Context, req *v1.I
 	secretName := depl.Uid + "-tls"
 
 	//check if secret exist
-	_, err = s.kubeAPI.Secrets(depl.Namespace).Get(secretName, metav1.GetOptions{})
+	_, err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Get(secretName, metav1.GetOptions{})
 	if err != nil {
 		return prepareResponse(v1.Status_OK,"Secret does not exist"), nil
 	}
 
 	//delete secret
-	err = s.kubeAPI.Secrets(depl.Namespace).Delete(secretName, &metav1.DeleteOptions{})
+	err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Delete(secretName, &metav1.DeleteOptions{})
 	if err != nil {
 		return prepareResponse(v1.Status_FAILED, "Error while removing secret!"), err
 	}
@@ -396,12 +396,12 @@ func (s *readinessServiceServer) CheckIfReady(ctx context.Context, req *v1.Insta
 	depl := req.Deployment
 
 	//check if given k8s namespace exists
-	_, err := s.kubeAPI.Namespaces().Get(depl.Namespace, metav1.GetOptions{})
+	_, err := s.kubeAPI.CoreV1().Namespaces().Get(depl.Namespace, metav1.GetOptions{})
 	if err != nil {
 		return prepareResponse(v1.Status_FAILED, "Namespace not found!"), err
 	}
 
-	app, err := s.kubeAPI.ReplicationControllers(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
+	app, err := s.kubeAPI.ExtensionsV1beta1().Deployments(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
 	if err != nil {
 		return prepareResponse(v1.Status_FAILED, "Deployment not found!"), err
 	}
@@ -409,22 +409,6 @@ func (s *readinessServiceServer) CheckIfReady(ctx context.Context, req *v1.Insta
 	if *app.Spec.Replicas == app.Status.ReadyReplicas {
 		return prepareResponse(v1.Status_OK, "Deployment is ready"), nil
 	}
-
-	//pod, err := s.kubeAPI
-	//if err != nil {
-	//	return prepareResponse(v1.Status_FAILED, "Pod not found!"), err
-	//}
-	//
-	//switch pod.Status.Phase {
-	//case apiv1.PodUnknown:
-	//case apiv1.PodFailed:
-	//default:
-	//	return prepareResponse(v1.Status_FAILED, "Pod is in wrong state or has crashed"), nil
-	//case apiv1.PodPending:
-	//	return prepareResponse(v1.Status_PENDING, "Pod is pending"), nil
-	//case apiv1.PodRunning:
-	//	return prepareResponse(v1.Status_PENDING, "Pod has not initialized yet"), nil
-	//}
 
 	return prepareResponse(v1.Status_PENDING, "Waiting for deployment"), err
 }
