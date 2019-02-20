@@ -18,6 +18,7 @@ import (
 
 const (
 	apiVersion = "v1"
+	namespaceNotFound = "Namespace not found"
 )
 
 type configServiceServer struct {
@@ -53,12 +54,10 @@ func NewReadinessServiceServer(kubeAPI *kubernetes.Clientset) v1.ReadinessServic
 	return &readinessServiceServer{kubeAPI: kubeAPI}
 }
 
-func checkAPI(api string) error {
-	if len(api) > 0 {
-		if apiVersion != api {
-			return status.Errorf(codes.Unimplemented,
-				"unsupported API version: service implements API version '%s', but asked for '%s'", apiVersion, api)
-		}
+func checkAPI(api string, current string) error {
+	if len(api) > 0 && current != api {
+		return status.Errorf(codes.Unimplemented,
+			"unsupported API version: service implements API version '%s', but asked for '%s'", apiVersion, api)
 	}
 	return nil
 }
@@ -181,7 +180,7 @@ func (s *configServiceServer) PrepareDataMapFromRepository(api *gitlab.Client, r
 //Create new configmap
 func (s *configServiceServer) CreateOrReplace(ctx context.Context, req *v1.InstanceRequest) (*v1.ServiceResponse, error) {
 	// check if the API version requested by client is supported by server
-	if err := checkAPI(req.Api); err != nil {
+	if err := checkAPI(req.Api, apiVersion); err != nil {
 		return nil, err
 	}
 
@@ -195,7 +194,7 @@ func (s *configServiceServer) CreateOrReplace(ctx context.Context, req *v1.Insta
 	//check if given k8s namespace exists
 	_, err = s.kubeAPI.CoreV1().Namespaces().Get(depl.Namespace, metav1.GetOptions{})
 	if err != nil {
-		return prepareResponse(v1.Status_FAILED, "Namespace not found!"), err
+		return prepareResponse(v1.Status_FAILED, namespaceNotFound), err
 	}
 
 	//check if configmap already exists
@@ -233,7 +232,7 @@ func (s *configServiceServer) CreateOrReplace(ctx context.Context, req *v1.Insta
 //Delete configmap for instance
 func (s *configServiceServer) DeleteIfExists(ctx context.Context, req *v1.InstanceRequest) (*v1.ServiceResponse, error) {
 	// check if the API version requested by client is supported by server
-	if err := checkAPI(req.Api); err != nil {
+	if err := checkAPI(req.Api, apiVersion); err != nil {
 		return nil, err
 	}
 
@@ -242,7 +241,7 @@ func (s *configServiceServer) DeleteIfExists(ctx context.Context, req *v1.Instan
 	//check if given k8s namespace exists
 	_, err := s.kubeAPI.CoreV1().Namespaces().Get(depl.Namespace, metav1.GetOptions{})
 	if err != nil {
-		return prepareResponse(v1.Status_FAILED, "Namespace not found!"), err
+		return prepareResponse(v1.Status_FAILED, namespaceNotFound), err
 	}
 
 	//check if configmap exist
@@ -295,7 +294,7 @@ func getAuthSecretName(uid string) string {
 
 func (s *basicAuthServiceServer) CreateOrReplace(ctx context.Context, req *v1.InstanceCredentialsRequest) (*v1.ServiceResponse, error) {
 	// check if the API version requested by client is supported by server
-	if err := checkAPI(req.Api); err != nil {
+	if err := checkAPI(req.Api, apiVersion); err != nil {
 		return nil, err
 	}
 
@@ -304,7 +303,7 @@ func (s *basicAuthServiceServer) CreateOrReplace(ctx context.Context, req *v1.In
 	//check if given k8s namespace exists
 	_, err := s.kubeAPI.CoreV1().Namespaces().Get(depl.Namespace, metav1.GetOptions{})
 	if err != nil {
-		return prepareResponse(v1.Status_FAILED, "Namespace not found!"), err
+		return prepareResponse(v1.Status_FAILED, namespaceNotFound), err
 	}
 
 	//create secret
@@ -327,7 +326,7 @@ func (s *basicAuthServiceServer) CreateOrReplace(ctx context.Context, req *v1.In
 
 func (s *basicAuthServiceServer) DeleteIfExists(ctx context.Context, req *v1.InstanceRequest) (*v1.ServiceResponse, error) {
 	// check if the API version requested by client is supported by server
-	if err := checkAPI(req.Api); err != nil {
+	if err := checkAPI(req.Api, apiVersion); err != nil {
 		return nil, err
 	}
 
@@ -336,7 +335,7 @@ func (s *basicAuthServiceServer) DeleteIfExists(ctx context.Context, req *v1.Ins
 	//check if given k8s namespace exists
 	_, err := s.kubeAPI.CoreV1().Namespaces().Get(depl.Namespace, metav1.GetOptions{})
 	if err != nil {
-		return prepareResponse(v1.Status_FAILED, "Namespace not found!"), err
+		return prepareResponse(v1.Status_FAILED, namespaceNotFound), err
 	}
 
 	secretName := getAuthSecretName(depl.Uid)
@@ -358,7 +357,7 @@ func (s *basicAuthServiceServer) DeleteIfExists(ctx context.Context, req *v1.Ins
 
 func (s *certManagerServiceServer) DeleteIfExists(ctx context.Context, req *v1.InstanceRequest) (*v1.ServiceResponse, error) {
 	// check if the API version requested by client is supported by server
-	if err := checkAPI(req.Api); err != nil {
+	if err := checkAPI(req.Api, apiVersion); err != nil {
 		return nil, err
 	}
 
@@ -367,7 +366,7 @@ func (s *certManagerServiceServer) DeleteIfExists(ctx context.Context, req *v1.I
 	//check if given k8s namespace exists
 	_, err := s.kubeAPI.CoreV1().Namespaces().Get(depl.Namespace, metav1.GetOptions{})
 	if err != nil {
-		return prepareResponse(v1.Status_FAILED, "Namespace not found!"), err
+		return prepareResponse(v1.Status_FAILED, namespaceNotFound), err
 	}
 
 	secretName := depl.Uid + "-tls"
@@ -389,7 +388,7 @@ func (s *certManagerServiceServer) DeleteIfExists(ctx context.Context, req *v1.I
 
 func (s *readinessServiceServer) CheckIfReady(ctx context.Context, req *v1.InstanceRequest) (*v1.ServiceResponse, error) {
 	// check if the API version requested by client is supported by server
-	if err := checkAPI(req.Api); err != nil {
+	if err := checkAPI(req.Api, apiVersion); err != nil {
 		return nil, err
 	}
 
@@ -398,7 +397,7 @@ func (s *readinessServiceServer) CheckIfReady(ctx context.Context, req *v1.Insta
 	//check if given k8s namespace exists
 	_, err := s.kubeAPI.CoreV1().Namespaces().Get(depl.Namespace, metav1.GetOptions{})
 	if err != nil {
-		return prepareResponse(v1.Status_FAILED, "Namespace not found!"), err
+		return prepareResponse(v1.Status_FAILED, namespaceNotFound), err
 	}
 
 	app, err := s.kubeAPI.ExtensionsV1beta1().Deployments(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
