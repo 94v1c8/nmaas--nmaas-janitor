@@ -74,7 +74,7 @@ func prepareResponse(status v1.Status, message string) *v1.ServiceResponse {
 //Find proper project, given user namespace and instance uid
 func (s *configServiceServer) FindGitlabProjectId(api *gitlab.Client, uid string, domain string) (int, error) {
 	//Find exact group
-	groups, _, err := s.gitAPI.Groups.SearchGroup(domain)
+	groups, _, err := api.Groups.SearchGroup(domain)
 	if len(groups) != 1 || err != nil {
 		log.Printf("Found %d groups in domain %s", len(groups), domain)
 		log.Print(err)
@@ -82,7 +82,7 @@ func (s *configServiceServer) FindGitlabProjectId(api *gitlab.Client, uid string
 	}
 
 	//List group projects
-	projs, _, err := s.gitAPI.Groups.ListGroupProjects(groups[0].ID, nil)
+	projs, _, err := api.Groups.ListGroupProjects(groups[0].ID, nil)
 	if err != nil || len(projs) == 0 {
 		log.Printf("Group %s is empty or unaccessible", groups[0].Name)
 		return -1, status.Errorf(codes.NotFound, "Project containing config not found on Gitlab")
@@ -101,7 +101,7 @@ func (s *configServiceServer) FindGitlabProjectId(api *gitlab.Client, uid string
 //Parse repository files into kubernetes json data part for patching
 func (s *configServiceServer) PrepareDataJsonFromRepository(api *gitlab.Client, repoId int) ([]byte, error) {
 	//List files
-	tree, _, err := s.gitAPI.Repositories.ListTree(repoId, nil)
+	tree, _, err := api.Repositories.ListTree(repoId, nil)
 	if err != nil {
 		log.Print(err)
 		return nil, status.Errorf(codes.NotFound, "Cannot find any config files")
@@ -122,7 +122,7 @@ func (s *configServiceServer) PrepareDataJsonFromRepository(api *gitlab.Client, 
 			continue
 		}
 		opt := &gitlab.GetRawFileOptions{Ref: gitlab.String("master")}
-		data, _, err := s.gitAPI.RepositoryFiles.GetRawFile(repoId, file.Name, opt)
+		data, _, err := api.RepositoryFiles.GetRawFile(repoId, file.Name, opt)
 		if err != nil {
 			log.Print(err)
 			return nil, status.Errorf(codes.Internal, "Error while reading file from Gitlab!")
@@ -147,7 +147,7 @@ func (s *configServiceServer) PrepareDataMapFromRepository(api *gitlab.Client, r
 	compiledMap := make(map[string][]byte)
 
 	//List files
-	tree, _, err := s.gitAPI.Repositories.ListTree(repoId, nil)
+	tree, _, err := api.Repositories.ListTree(repoId, nil)
 	if err != nil {
 		log.Print(err)
 		return nil, status.Errorf(codes.NotFound, "Cannot find any config files")
@@ -164,7 +164,7 @@ func (s *configServiceServer) PrepareDataMapFromRepository(api *gitlab.Client, r
 		}
 
 		opt := &gitlab.GetRawFileOptions{Ref: gitlab.String("master")}
-		data, _, err := s.gitAPI.RepositoryFiles.GetRawFile(repoId, file.Name, opt)
+		data, _, err := api.RepositoryFiles.GetRawFile(repoId, file.Name, opt)
 		if err != nil {
 			log.Print(err)
 			return nil, status.Errorf(codes.Internal, "Error while reading file from Gitlab!")

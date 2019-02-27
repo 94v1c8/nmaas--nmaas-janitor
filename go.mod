@@ -2,6 +2,7 @@ module code.geant.net/stash/scm/nmaas/nmaas-janitor
 
 require (
 	github.com/gogo/protobuf v1.2.0 // indirect
+	github.com/golang/mock v1.2.0 // indirect
 	github.com/golang/protobuf v1.2.0
 	github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c // indirect
 	github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf // indirect

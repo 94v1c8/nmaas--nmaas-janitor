@@ -16,3 +16,11 @@ func TestCheckAPI(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestBasicAuthServiceServer_PrepareSecretDataFromCredentials(t *testing.T) {
+
+}
+
+func TestBasicAuthServiceServer_PrepareSecretJsonFromCredentials(t *testing.T) {
+
+}

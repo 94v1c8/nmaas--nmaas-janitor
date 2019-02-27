@@ -60,3 +60,4 @@ func RunServer() error {
 
 	return grpc.RunServer(ctx, confAPI, authAPI, certAPI, readyAPI, cfg.GRPCPort)
 }
+
