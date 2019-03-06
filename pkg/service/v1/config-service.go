@@ -334,12 +334,12 @@ func (s *basicAuthServiceServer) CreateOrReplace(ctx context.Context, req *v1.In
 		}
 
 		//patch secret
-		_, err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Patch(depl.Uid, types.MergePatchType, patch)
+		_, err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Patch(secretName, types.MergePatchType, patch)
 		if err != nil {
-			return prepareResponse(v1.Status_FAILED, "Error while patching configmap!"), err
+			return prepareResponse(v1.Status_FAILED, "Error while patching secret!"), err
 		}
 
-		return prepareResponse(v1.Status_OK, "ConfigMap updated successfully"), nil
+		return prepareResponse(v1.Status_OK, "Secret updated successfully"), nil
 	}
 }
 
