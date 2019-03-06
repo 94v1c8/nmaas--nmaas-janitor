@@ -306,22 +306,41 @@ func (s *basicAuthServiceServer) CreateOrReplace(ctx context.Context, req *v1.In
 		return prepareResponse(v1.Status_FAILED, namespaceNotFound), err
 	}
 
-	//create secret
-	secret := apiv1.Secret{}
-	secret.SetNamespace(depl.Namespace)
-	secret.SetName(getAuthSecretName(depl.Uid))
-	secret.Data, err = s.PrepareSecretDataFromCredentials(req.Credentials)
-	if err != nil {
-		return prepareResponse(v1.Status_FAILED, "Error while preparing secret!"), err
-	}
+	secretName := getAuthSecretName(depl.Uid)
 
-	//commit secret
-	_, err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Create(&secret)
+	_, err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Get(secretName, metav1.GetOptions{})
+	//Secret does not exist, we have to create it
 	if err != nil {
-		return prepareResponse(v1.Status_FAILED, "Error while creating secret!"), err
-	}
+		//create secret
+		secret := apiv1.Secret{}
+		secret.SetNamespace(depl.Namespace)
+		secret.SetName(secretName)
+		secret.Data, err = s.PrepareSecretDataFromCredentials(req.Credentials)
+		if err != nil {
+			return prepareResponse(v1.Status_FAILED, "Error while preparing secret!"), err
+		}
 
-	return prepareResponse(v1.Status_OK, "Secret created successfully"), nil
+		//commit secret
+		_, err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Create(&secret)
+		if err != nil {
+			return prepareResponse(v1.Status_FAILED, "Error while creating secret!"), err
+		}
+
+		return prepareResponse(v1.Status_OK, "Secret created successfully"), nil
+	} else {
+		patch, err := s.PrepareSecretJsonFromCredentials(req.Credentials)
+		if err != nil {
+			return prepareResponse(v1.Status_FAILED, "Error while parsing configuration data"), err
+		}
+
+		//patch secret
+		_, err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Patch(depl.Uid, types.MergePatchType, patch)
+		if err != nil {
+			return prepareResponse(v1.Status_FAILED, "Error while patching configmap!"), err
+		}
+
+		return prepareResponse(v1.Status_OK, "ConfigMap updated successfully"), nil
+	}
 }
 
 func (s *basicAuthServiceServer) DeleteIfExists(ctx context.Context, req *v1.InstanceRequest) (*v1.ServiceResponse, error) {

@@ -24,3 +24,11 @@ func TestBasicAuthServiceServer_PrepareSecretDataFromCredentials(t *testing.T) {
 func TestBasicAuthServiceServer_PrepareSecretJsonFromCredentials(t *testing.T) {
 
 }
+
+func TestConfigServiceServer_PrepareDataJsonFromRepository(t *testing.T) {
+
+}
+
+func TestConfigServiceServer_PrepareDataMapFromRepository(t *testing.T) {
+
+}
