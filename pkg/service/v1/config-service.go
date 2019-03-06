@@ -282,7 +282,7 @@ func (s *basicAuthServiceServer) PrepareSecretJsonFromCredentials(credentials *v
 	}
 
 	result := []byte("{\"data\": {\"auth\": \"")
-	result = append(result, out...)
+	result = append(result, base64.StdEncoding.EncodeToString(out)...)
 	result = append(result, "\"}}"...)
 
 	return result, nil
