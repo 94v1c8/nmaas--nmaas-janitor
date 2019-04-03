@@ -60,5 +60,8 @@ func TestReadinessServiceServer_CheckIfReady(t *testing.T) {
 func TestCertManagerServiceServer_DeleteIfExists(t *testing.T) {
 	server := NewCertManagerServiceServer(testclient.NewSimpleClientset())
 
-	res, err := server.DeleteIfExists(context.Background(), &req)
+	res, err := server.DeleteIfExists(context.Background(), &illegal_req)
+	if err == nil || res != nil {
+		t.Fail()
+	}
 }
