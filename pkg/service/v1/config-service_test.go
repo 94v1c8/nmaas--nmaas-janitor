@@ -3,8 +3,8 @@ package v1
 import (
 	"code.geant.net/stash/scm/nmaas/nmaas-janitor/pkg/api/v1"
 	"context"
+	extension "k8s.io/api/extensions/v1beta1"
 	corev1 "k8s.io/api/core/v1"
-	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 	testclient "k8s.io/client-go/kubernetes/fake"
 )
@@ -40,12 +40,6 @@ func TestReadinessServiceServer_CheckIfReady(t *testing.T) {
 		t.Fail()
 	}
 
-	_, _ = client.CoreV1().Namespaces().Create(&corev1.Namespace{
-		ObjectMeta: v12.ObjectMeta {
-			Name: "test-namespace",
-		},
-	})
-
 	//Fail on namespace check
 	freq := v1.InstanceRequest{Api:apiVersion, Deployment:&fake_ns_inst}
 	res, err = server.CheckIfReady(context.Background(), &freq)
@@ -53,15 +47,54 @@ func TestReadinessServiceServer_CheckIfReady(t *testing.T) {
 		t.Fail()
 	}
 
+	//create mock namespace
+	ns := corev1.Namespace{}
+	ns.Name = "test-namespace"
+	_, _ = client.CoreV1().Namespaces().Create(&ns)
+
 	//Fail on deployment
+	res, err = server.CheckIfReady(context.Background(), &req)
+	if err == nil || res.Status != v1.Status_FAILED {
+		t.Fail()
+	}
+
+	//create mock deployment
+	depl := extension.Deployment{}
+	depl.Name = "test-uid"
+	q := int32(5)
+	depl.Spec.Replicas = &q
+	depl.Status.Replicas = q
+	_, _ = client.ExtensionsV1beta1().Deployments("test-namespace").Create(&depl)
+
 
 }
 
 func TestCertManagerServiceServer_DeleteIfExists(t *testing.T) {
-	server := NewCertManagerServiceServer(testclient.NewSimpleClientset())
+	client := testclient.NewSimpleClientset()
+	server := NewCertManagerServiceServer(client)
 
+	//Fail on API version check
 	res, err := server.DeleteIfExists(context.Background(), &illegal_req)
 	if err == nil || res != nil {
 		t.Fail()
 	}
+
+	//Fail on namespace check
+	freq := v1.InstanceRequest{Api:apiVersion, Deployment:&fake_ns_inst}
+	res, err = server.DeleteIfExists(context.Background(), &freq)
+	if err == nil || res.Status != v1.Status_FAILED {
+		t.Fail()
+	}
+
+	//create mock namespace
+	ns := corev1.Namespace{}
+	ns.Name = "test-namespace"
+	_, _ = client.CoreV1().Namespaces().Create(&ns)
+
+	//Pass if already nonexistent
+	res, err = server.DeleteIfExists(context.Background(), &req)
+	if err != nil || res.Status != v1.Status_OK {
+		t.Fail()
+	}
+
 }
