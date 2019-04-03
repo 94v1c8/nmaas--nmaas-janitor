@@ -22,35 +22,35 @@ const (
 )
 
 type configServiceServer struct {
-	kubeAPI *kubernetes.Clientset
+	kubeAPI kubernetes.Interface
 	gitAPI *gitlab.Client
 }
 
 type basicAuthServiceServer struct {
-	kubeAPI *kubernetes.Clientset
+	kubeAPI kubernetes.Interface
 }
 
 type certManagerServiceServer struct {
-	kubeAPI *kubernetes.Clientset
+	kubeAPI kubernetes.Interface
 }
 
 type readinessServiceServer struct {
-	kubeAPI *kubernetes.Clientset
+	kubeAPI kubernetes.Interface
 }
 
-func NewConfigServiceServer(kubeAPI *kubernetes.Clientset, gitAPI *gitlab.Client) v1.ConfigServiceServer {
+func NewConfigServiceServer(kubeAPI kubernetes.Interface, gitAPI *gitlab.Client) v1.ConfigServiceServer {
 	return &configServiceServer{kubeAPI: kubeAPI, gitAPI: gitAPI}
 }
 
-func NewBasicAuthServiceServer(kubeAPI *kubernetes.Clientset) v1.BasicAuthServiceServer {
+func NewBasicAuthServiceServer(kubeAPI kubernetes.Interface) v1.BasicAuthServiceServer {
 	return &basicAuthServiceServer{kubeAPI: kubeAPI}
 }
 
-func NewCertManagerServiceServer(kubeAPI *kubernetes.Clientset) v1.CertManagerServiceServer {
+func NewCertManagerServiceServer(kubeAPI kubernetes.Interface) v1.CertManagerServiceServer {
 	return &certManagerServiceServer{kubeAPI: kubeAPI}
 }
 
-func NewReadinessServiceServer(kubeAPI *kubernetes.Clientset) v1.ReadinessServiceServer {
+func NewReadinessServiceServer(kubeAPI kubernetes.Interface) v1.ReadinessServiceServer {
 	return &readinessServiceServer{kubeAPI: kubeAPI}
 }
 
