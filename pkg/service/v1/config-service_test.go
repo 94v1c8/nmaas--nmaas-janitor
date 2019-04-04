@@ -75,6 +75,8 @@ func TestReadinessServiceServer_CheckIfReady(t *testing.T) {
 	p := int32(3)
 	depl.Status.ReadyReplicas = p
 	_, _ = client.ExtensionsV1beta1().Deployments("test-namespace").Update(&depl)
+
+	res, err = server.CheckIfReady(context.Background(), &req)
 	if err != nil || res.Status != v1.Status_PENDING {
 		t.Fail()
 	}
