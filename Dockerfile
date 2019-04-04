@@ -16,6 +16,5 @@ RUN CGO_ENABLED=0 GOOS=linux go build
 
 FROM alpine:latest
 MAINTAINER Michał Bień
-RUN apk add apache2-utils
 COPY --from=builder /build/pkg/cmd/server/server /go/bin/nmaas-janitor
 ENTRYPOINT /go/bin/nmaas-janitor -port $SERVER_PORT -token $GITLAB_TOKEN -url $GITLAB_URL
