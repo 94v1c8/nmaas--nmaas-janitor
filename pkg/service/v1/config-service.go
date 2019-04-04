@@ -11,9 +11,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"log"
+	"math/rand"
 	"os/exec"
 
 	"code.geant.net/stash/scm/nmaas/nmaas-janitor/pkg/api/v1"
+	"github.com/johnaoss/htpasswd/apr1"
 )
 
 const (
@@ -259,30 +261,45 @@ func (s *configServiceServer) DeleteIfExists(ctx context.Context, req *v1.Instan
 	return prepareResponse(v1.Status_OK, "ConfigMap deleted successfully"), nil
 }
 
-func (s *basicAuthServiceServer) PrepareSecretDataFromCredentials(credentials *v1.Credentials) (map[string][]byte, error) {
-	cmd := exec.Command("htpasswd", "-nb", credentials.User, credentials.Password)
-	out, err := cmd.Output()
+func randomString(l int) string {
+	bytes := make([]byte, l)
+	for i := 0; i < l; i++ {
+		bytes[i] = byte(65 + rand.Intn(90-65))
+	}
+	return string(bytes)
+}
+
+func aprHashCredentials(user string, password string) (string, error) {
+	out, err := apr1.Hash(password, randomString(8))
 
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Failed to execute htpasswd executable")
+		return "", status.Errorf(codes.Internal, "Failed to execute apr hashing")
+	}
+
+	return user + ":" + out, nil
+}
+
+func (s *basicAuthServiceServer) PrepareSecretDataFromCredentials(credentials *v1.Credentials) (map[string][]byte, error) {
+	hash, err := aprHashCredentials(credentials.User, credentials.Password)
+	if err != nil {
+		return nil, err
 	}
 
 	resultMap := make(map[string][]byte)
-	resultMap["auth"] = out
+	resultMap["auth"] = []byte(hash)
 
 	return resultMap, nil
 }
 
 func (s *basicAuthServiceServer) PrepareSecretJsonFromCredentials(credentials *v1.Credentials) ([]byte, error) {
-	cmd := exec.Command("htpasswd", "-nb", credentials.User, credentials.Password)
-	out, err := cmd.Output()
+	hash, err := aprHashCredentials(credentials.User, credentials.Password)
 
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to execute htpasswd executable")
 	}
 
 	result := []byte("{\"data\": {\"auth\": \"")
-	result = append(result, base64.StdEncoding.EncodeToString(out)...)
+	result = append(result, base64.StdEncoding.EncodeToString([]byte(hash))...)
 	result = append(result, "\"}}"...)
 
 	return result, nil
