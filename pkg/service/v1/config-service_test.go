@@ -96,5 +96,14 @@ func TestCertManagerServiceServer_DeleteIfExists(t *testing.T) {
 	if err != nil || res.Status != v1.Status_OK {
 		t.Fail()
 	}
+}
 
+func TestBasicAuthServiceServer_DeleteIfExists(t *testing.T) {
+	client := testclient.NewSimpleClientset()
+	server := NewBasicAuthServiceServer(client)
+
+	res, err := server.DeleteIfExists(context.Background(), &illegal_req)
+	if err == nil || res != nil {
+		t.Fail()
+	}
 }
