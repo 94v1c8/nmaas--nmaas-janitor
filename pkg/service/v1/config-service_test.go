@@ -225,7 +225,7 @@ func TestConfigServiceServer_DeleteIfExists(t *testing.T) {
 
 	//Should return ok on configmap check if missing
 	res, err = server.DeleteIfExists(context.Background(), &req)
-	if err == nil || res.Status != v1.Status_OK {
+	if err != nil || res.Status != v1.Status_OK {
 		t.Fail()
 	}
 
