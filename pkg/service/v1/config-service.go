@@ -12,7 +12,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"log"
 	"math/rand"
-	"os/exec"
 
 	"code.geant.net/stash/scm/nmaas/nmaas-janitor/pkg/api/v1"
 	"github.com/johnaoss/htpasswd/apr1"
