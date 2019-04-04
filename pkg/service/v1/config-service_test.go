@@ -3,6 +3,7 @@ package v1
 import (
 	"code.geant.net/stash/scm/nmaas/nmaas-janitor/pkg/api/v1"
 	"context"
+	"github.com/xanzy/go-gitlab"
 	extension "k8s.io/api/extensions/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -190,6 +191,52 @@ func TestBasicAuthServiceServer_CreateOrReplace(t *testing.T) {
 
 	sec, err := client.CoreV1().Secrets("test-namespace").Get(getAuthSecretName("test-uid"), v12.GetOptions{})
 	if err != nil || sec == nil {
+		t.Fail()
+	}
+
+	//Should update secret when already exists
+	res, err = server.CreateOrReplace(context.Background(), &req)
+	if res.Status != v1.Status_OK || err != nil {
+		t.Fail()
+	}
+}
+
+func TestConfigServiceServer_DeleteIfExists(t *testing.T) {
+	client := testclient.NewSimpleClientset()
+	gitclient := gitlab.Client{}
+	server := NewConfigServiceServer(client, &gitclient)
+
+	//Should fail on api check
+	res, err := server.DeleteIfExists(context.Background(), &illegal_req)
+	if res != nil || err == nil {
+		t.Fail()
+	}
+
+	//Should fail on namespace check
+	res, err = server.DeleteIfExists(context.Background(), &req)
+	if err == nil || res.Status != v1.Status_FAILED {
+		t.Fail()
+	}
+
+	//create mock namespace
+	ns := corev1.Namespace{}
+	ns.Name = "test-namespace"
+	_, _ = client.CoreV1().Namespaces().Create(&ns)
+
+	//Should fail on configmap check
+	res, err = server.DeleteIfExists(context.Background(), &req)
+	if err == nil || res.Status != v1.Status_FAILED {
+		t.Fail()
+	}
+
+	//create mock configmap
+	cm := corev1.ConfigMap{}
+	cm.Name = "test-uid"
+	_, _ = client.CoreV1().ConfigMaps("test-namespace").Create(&cm)
+
+	//should pass
+	res, err = server.DeleteIfExists(context.Background(), &req)
+	if err != nil || res.Status != v1.Status_OK {
 		t.Fail()
 	}
 }
