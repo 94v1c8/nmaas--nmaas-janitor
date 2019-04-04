@@ -58,15 +58,26 @@ func TestReadinessServiceServer_CheckIfReady(t *testing.T) {
 		t.Fail()
 	}
 
-	//create mock deployment
+	//create mock deployment that is fully deployed
 	depl := extension.Deployment{}
 	depl.Name = "test-uid"
 	q := int32(5)
 	depl.Spec.Replicas = &q
-	depl.Status.Replicas = q
+	depl.Status.ReadyReplicas = q
 	_, _ = client.ExtensionsV1beta1().Deployments("test-namespace").Create(&depl)
 
+	res, err = server.CheckIfReady(context.Background(), &req)
+	if err != nil || res.Status != v1.Status_OK {
+		t.Fail()
+	}
 
+	//modify mock deployment to be partially deployed
+	p := int32(3)
+	depl.Status.ReadyReplicas = p
+	_, _ = client.ExtensionsV1beta1().Deployments("test-namespace").Update(&depl)
+	if err != nil || res.Status != v1.Status_PENDING {
+		t.Fail()
+	}
 }
 
 func TestCertManagerServiceServer_DeleteIfExists(t *testing.T) {
@@ -96,6 +107,14 @@ func TestCertManagerServiceServer_DeleteIfExists(t *testing.T) {
 	if err != nil || res.Status != v1.Status_OK {
 		t.Fail()
 	}
+
+	//Create mock secret
+	sec := corev1.Secret{}
+	sec.Name = "test-uid-tls"
+	_, _ = client.CoreV1().Secrets("test-namespace").Create(&sec)
+
+	//Pass
+	res, err = server.DeleteIfExists(context.Background(), &req)
 }
 
 func TestBasicAuthServiceServer_DeleteIfExists(t *testing.T) {
@@ -106,4 +125,30 @@ func TestBasicAuthServiceServer_DeleteIfExists(t *testing.T) {
 	if err == nil || res != nil {
 		t.Fail()
 	}
+
+	//Fail on namespace check
+	freq := v1.InstanceRequest{Api:apiVersion, Deployment:&fake_ns_inst}
+	res, err = server.DeleteIfExists(context.Background(), &freq)
+	if err == nil || res.Status != v1.Status_FAILED {
+		t.Fail()
+	}
+
+	//create mock namespace
+	ns := corev1.Namespace{}
+	ns.Name = "test-namespace"
+	_, _ = client.CoreV1().Namespaces().Create(&ns)
+
+	//Pass if already nonexistent
+	res, err = server.DeleteIfExists(context.Background(), &req)
+	if err != nil || res.Status != v1.Status_OK {
+		t.Fail()
+	}
+
+	//Create mock secret
+	sec := corev1.Secret{}
+	sec.Name = getAuthSecretName("test-uid")
+	_, _ = client.CoreV1().Secrets("test-namespace").Create(&sec)
+
+	//Pass
+	res, err = server.DeleteIfExists(context.Background(), &req)
 }
