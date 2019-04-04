@@ -5,6 +5,7 @@ import (
 	"context"
 	extension "k8s.io/api/extensions/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 	testclient "k8s.io/client-go/kubernetes/fake"
 )
@@ -153,4 +154,42 @@ func TestBasicAuthServiceServer_DeleteIfExists(t *testing.T) {
 
 	//Pass
 	res, err = server.DeleteIfExists(context.Background(), &req)
+}
+
+func TestBasicAuthServiceServer_CreateOrReplace(t *testing.T) {
+	client := testclient.NewSimpleClientset()
+	server := NewBasicAuthServiceServer(client)
+
+	creds := v1.Credentials{User: "test-user", Password: "test-password"}
+
+	//Fail on api test
+	illreq := v1.InstanceCredentialsRequest{Api: "dummy", Instance: &fake_ns_inst, Credentials: &creds}
+	res, err := server.CreateOrReplace(context.Background(), &illreq)
+	if err == nil || res != nil {
+		t.Fail()
+	}
+
+	//Fail on namespace check
+	freq := v1.InstanceCredentialsRequest{Api:apiVersion, Instance:&fake_ns_inst, Credentials: &creds}
+	res, err = server.CreateOrReplace(context.Background(), &freq)
+	if err == nil || res.Status != v1.Status_FAILED {
+		t.Fail()
+	}
+
+	//create mock namespace
+	ns := corev1.Namespace{}
+	ns.Name = "test-namespace"
+	_, _ = client.CoreV1().Namespaces().Create(&ns)
+
+	//Should create new secret
+	req := v1.InstanceCredentialsRequest{Api:apiVersion, Instance:&inst, Credentials: &creds}
+	res, err = server.CreateOrReplace(context.Background(), &req)
+	if res.Status != v1.Status_OK || err != nil {
+		t.Fail()
+	}
+
+	sec, err := client.CoreV1().Secrets("test-namespace").Get(getAuthSecretName("test-uid"), v12.GetOptions{})
+	if err != nil || sec == nil {
+		t.Fail()
+	}
 }
