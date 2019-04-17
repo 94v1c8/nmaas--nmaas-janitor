@@ -170,18 +170,6 @@ func TestBasicAuthServiceServer_CreateOrReplace(t *testing.T) {
 		t.Fail()
 	}
 
-	//Fail on namespace check
-	freq := v1.InstanceCredentialsRequest{Api:apiVersion, Instance:&fake_ns_inst, Credentials: &creds}
-	res, err = server.CreateOrReplace(context.Background(), &freq)
-	if err == nil || res.Status != v1.Status_FAILED {
-		t.Fail()
-	}
-
-	//create mock namespace
-	ns := corev1.Namespace{}
-	ns.Name = "test-namespace"
-	_, _ = client.CoreV1().Namespaces().Create(&ns)
-
 	//Should create new secret
 	req := v1.InstanceCredentialsRequest{Api:apiVersion, Instance:&inst, Credentials: &creds}
 	res, err = server.CreateOrReplace(context.Background(), &req)

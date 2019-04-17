@@ -194,8 +194,13 @@ func (s *configServiceServer) CreateOrReplace(ctx context.Context, req *v1.Insta
 
 	//check if given k8s namespace exists
 	_, err = s.kubeAPI.CoreV1().Namespaces().Get(depl.Namespace, metav1.GetOptions{})
-	if err != nil {
-		return prepareResponse(v1.Status_FAILED, namespaceNotFound), err
+	if err != nil{
+		ns := apiv1.Namespace{}
+		ns.Name = depl.Namespace
+		_, err = s.kubeAPI.CoreV1().Namespaces().Create(&ns)
+		if err != nil {
+			return prepareResponse(v1.Status_FAILED, namespaceNotFound), err
+		}
 	}
 
 	//check if configmap already exists
@@ -318,8 +323,13 @@ func (s *basicAuthServiceServer) CreateOrReplace(ctx context.Context, req *v1.In
 
 	//check if given k8s namespace exists
 	_, err := s.kubeAPI.CoreV1().Namespaces().Get(depl.Namespace, metav1.GetOptions{})
-	if err != nil {
-		return prepareResponse(v1.Status_FAILED, namespaceNotFound), err
+	if err != nil{
+		ns := apiv1.Namespace{}
+		ns.Name = depl.Namespace
+		_, err = s.kubeAPI.CoreV1().Namespaces().Create(&ns)
+		if err != nil {
+			return prepareResponse(v1.Status_FAILED, namespaceNotFound), err
+		}
 	}
 
 	secretName := getAuthSecretName(depl.Uid)
