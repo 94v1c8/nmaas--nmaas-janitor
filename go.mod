@@ -4,7 +4,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/gogo/protobuf v1.2.0 // indirect
-	github.com/golang/protobuf v1.2.0
+	github.com/golang/protobuf v1.3.2
 	github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c // indirect
 	github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf // indirect
 	github.com/googleapis/gnostic v0.2.0 // indirect
@@ -20,7 +20,7 @@ require (
 	github.com/xanzy/go-gitlab v0.12.0
 	golang.org/x/net v0.0.0-20181108082009-03003ca0c849
 	golang.org/x/time v0.0.0-20181108054448-85acf8d2951c // indirect
-	google.golang.org/grpc v1.17.0
+	google.golang.org/grpc v1.27.0
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.2.2 // indirect
 	k8s.io/api v0.0.0-20181130031204-d04500c8c3dd
@@ -30,3 +30,5 @@ require (
 	k8s.io/kube-openapi v0.0.0-20190401085232-94e1e7b7574c // indirect
 	sigs.k8s.io/yaml v1.1.0 // indirect
 )
+
+go 1.13

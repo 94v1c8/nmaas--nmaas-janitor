@@ -57,7 +57,8 @@ func RunServer() error {
 	authAPI := v1.NewBasicAuthServiceServer(kubeAPI)
 	certAPI := v1.NewCertManagerServiceServer(kubeAPI)
 	readyAPI := v1.NewReadinessServiceServer(kubeAPI)
+	infoAPI := v1.NewInformationServiceServer(kubeAPI)
 
-	return grpc.RunServer(ctx, confAPI, authAPI, certAPI, readyAPI, cfg.GRPCPort)
+	return grpc.RunServer(ctx, confAPI, authAPI, certAPI, readyAPI, infoAPI, cfg.GRPCPort)
 }
 

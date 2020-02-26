@@ -39,6 +39,10 @@ type readinessServiceServer struct {
 	kubeAPI kubernetes.Interface
 }
 
+type informationServiceServer struct {
+	kubeAPI kubernetes.Interface
+}
+
 func NewConfigServiceServer(kubeAPI kubernetes.Interface, gitAPI *gitlab.Client) v1.ConfigServiceServer {
 	return &configServiceServer{kubeAPI: kubeAPI, gitAPI: gitAPI}
 }
@@ -55,6 +59,10 @@ func NewReadinessServiceServer(kubeAPI kubernetes.Interface) v1.ReadinessService
 	return &readinessServiceServer{kubeAPI: kubeAPI}
 }
 
+func NewInformationServiceServer(kubeAPI kubernetes.Interface) v1.InformationServiceServer {
+	return &informationServiceServer{kubeAPI: kubeAPI}
+}
+
 func checkAPI(api string, current string) error {
 	if len(api) > 0 && current != api {
 		return status.Errorf(codes.Unimplemented,
@@ -69,6 +77,16 @@ func prepareResponse(status v1.Status, message string) *v1.ServiceResponse {
 		Api: apiVersion,
 		Status: status,
 		Message: message,
+	}
+}
+
+//Prepare info response
+func prepareInfoResponse(status v1.Status, message string, info string) *v1.InfoServiceResponse {
+	return &v1.InfoServiceResponse{
+		Api: apiVersion,
+		Status: status,
+		Message: message,
+		Info: info,
 	}
 }
 
@@ -455,4 +473,32 @@ func (s *readinessServiceServer) CheckIfReady(ctx context.Context, req *v1.Insta
 	}
 
 	return prepareResponse(v1.Status_PENDING, "Waiting for deployment"), err
+}
+
+func (s *informationServiceServer) RetrieveServiceIp(ctx context.Context, req *v1.InstanceRequest) (*v1.InfoServiceResponse, error) {
+	// check if the API version requested by client is supported by server
+	if err := checkAPI(req.Api, apiVersion); err != nil {
+		return nil, err
+	}
+	
+	depl := req.Deployment
+
+	//check if given k8s namespace exists
+	_, err := s.kubeAPI.CoreV1().Namespaces().Get(depl.Namespace, metav1.GetOptions{})
+	if err != nil {
+		return prepareInfoResponse(v1.Status_FAILED, namespaceNotFound, ""), err
+	}
+	
+	app, err := s.kubeAPI.CoreV1().Services(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
+	if err != nil {
+		return prepareInfoResponse(v1.Status_FAILED, "Service not found!", ""), err
+	}
+	
+	ip := app.Status.LoadBalancer.Ingress[0].IP;
+	
+	if ip != "" {
+		return prepareInfoResponse(v1.Status_OK, "", ip), nil
+	} else {
+		return prepareInfoResponse(v1.Status_FAILED, "Ip not found!", ""), nil
+	}
 }
