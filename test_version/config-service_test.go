@@ -115,40 +115,8 @@ func TestInformationServiceServer_RetrieveServiceIp(t *testing.T) {
 	//create mock service without ingress
 	s1 := corev1.Service{}
 	s1.Name = "test-uid"
+	s1.Spec.ClusterIP = "10.10.1.1"
 	_, _ = client.CoreV1().Services("test-namespace").Create(&s1)
-
-	//Fail on missing service ingress
-	// fake for tests
-	//res, err = server.RetrieveServiceIp(context.Background(), &req)
-	//if err != nil || res.Status != v1.Status_FAILED || res.Message != "Service ingress not found!"{
-	//	t.Fail()
-	//}
-
-	//create mock service with ingress but no IP
-	s2 := corev1.Service{}
-	s2.Name = "test-uid"
-	i1 := corev1.LoadBalancerIngress{}
-	ing := []corev1.LoadBalancerIngress{i1}
-	s2.Status.LoadBalancer.Ingress = ing
-	client.CoreV1().Services("test-namespace").Delete("test-uid", &metav1.DeleteOptions{})
-	_, _ = client.CoreV1().Services("test-namespace").Create(&s2)
-
-	//Fail on missing service ingress IP
-	// fake for tests
-	//res, err = server.RetrieveServiceIp(context.Background(), &req)
-	//if err != nil || res.Status != v1.Status_FAILED || res.Message != "Ip not found!"{
-	//	t.Fail()
-	//}
-
-	//create mock service with ingress and IP
-	s3 := corev1.Service{}
-	s3.Name = "test-uid"
-	i2 := corev1.LoadBalancerIngress{}
-	i2.IP = "10.10.1.1"
-	ing2 := []corev1.LoadBalancerIngress{i2}
-	s3.Status.LoadBalancer.Ingress = ing2
-	client.CoreV1().Services("test-namespace").Delete("test-uid", &metav1.DeleteOptions{})
-	_, _ = client.CoreV1().Services("test-namespace").Create(&s3)
 
 	//Pass
 	res, err = server.RetrieveServiceIp(context.Background(), &req)
