@@ -117,53 +117,10 @@ func (s *configServiceServer) FindGitlabProjectId(api *gitlab.Client, uid string
 	return -1, status.Errorf(codes.NotFound, "Project containing config not found on Gitlab")
 }
 
-//Parse repository files into kubernetes json data part for patching
-func (s *configServiceServer) PrepareDataJsonFromRepository(api *gitlab.Client, repoId int) ([]byte, error) {
-	//List files
-	tree, _, err := api.Repositories.ListTree(repoId, nil)
-	if err != nil {
-		log.Print(err)
-		return nil, status.Errorf(codes.NotFound, "Cannot find any config files")
-	}
-
-	numFiles := len(tree)
-
-	//create helper strings
-	mapStart := []byte("{\"binaryData\": {\"")
-	mapAfterName := []byte("\": \"")
-	mapNextData := []byte("\", \"")
-	mapAfterLast := []byte("\"}}")
-
-	//Start parsing
-	compiledMap := mapStart
-	for i, file := range tree {
-		if file.Type != "blob" {
-			continue
-		}
-		opt := &gitlab.GetRawFileOptions{Ref: gitlab.String("master")}
-		data, _, err := api.RepositoryFiles.GetRawFile(repoId, file.Name, opt)
-		if err != nil {
-			log.Print(err)
-			return nil, status.Errorf(codes.Internal, "Error while reading file from Gitlab!")
-		}
-
-		compiledMap = append(compiledMap, file.Name...)
-		compiledMap = append(compiledMap, mapAfterName...)
-		compiledMap = append(compiledMap, base64.StdEncoding.EncodeToString(data)...)
-
-		if numFiles-1 != i { //it's not last element
-			compiledMap = append(compiledMap, mapNextData...)
-		}
-	}
-	compiledMap = append(compiledMap, mapAfterLast...)
-
-	return compiledMap, nil
-}
-
 //Parse repository files into string:string map for configmap creator
-func (s *configServiceServer) PrepareDataMapFromRepository(api *gitlab.Client, repoId int) (map[string][]byte, error) {
+func (s *configServiceServer) PrepareDataMapFromRepository(api *gitlab.Client, repoId int) (map[string]string, error) {
 
-	compiledMap := make(map[string][]byte)
+	compiledMap := make(map[string]string)
 
 	//List files
 	tree, _, err := api.Repositories.ListTree(repoId, nil)
@@ -171,10 +128,6 @@ func (s *configServiceServer) PrepareDataMapFromRepository(api *gitlab.Client, r
 		log.Print(err)
 		return nil, status.Errorf(codes.NotFound, "Cannot find any config files")
 	}
-	//if len(tree) == 0 {
-	//	log.Printf("There are no files to config in repo %d", repoId)
-	//	return compiledMap, nil
-	//}
 
 	//Start parsing
 	for _, file := range tree {
@@ -190,7 +143,7 @@ func (s *configServiceServer) PrepareDataMapFromRepository(api *gitlab.Client, r
 		}
 
 		//assign retrieved binary data to newly created configmap
-		compiledMap[file.Name] = data
+		compiledMap[file.Name] = string(data)
 	}
 
 	return compiledMap, nil
@@ -221,32 +174,30 @@ func (s *configServiceServer) CreateOrReplace(ctx context.Context, req *v1.Insta
 		}
 	}
 
+	cm := apiv1.ConfigMap{}
+	cm.SetName(depl.Uid)
+	cm.SetNamespace(depl.Namespace)
+	cm.Data, err = s.PrepareDataMapFromRepository(s.gitAPI, proj)
+
+	if err != nil {
+		return prepareResponse(v1.Status_FAILED, "Failed to retrieve data from repository"), err
+	}
+
 	//check if configmap already exists
-	_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
+	_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})		
 	if err != nil { //Not exists, we create new
-		cm := apiv1.ConfigMap{}
-		cm.SetName(depl.Uid)
-		cm.SetNamespace(depl.Namespace)
-		cm.BinaryData, err = s.PrepareDataMapFromRepository(s.gitAPI, proj)
-		if err != nil {
-			return prepareResponse(v1.Status_FAILED, "Failed to retrieve data from repository"), err
-		}
+
 		_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Create(&cm)
 		if err != nil {
 			return prepareResponse(v1.Status_FAILED, "Failed to create ConfigMap"), err
 		}
 
 		return prepareResponse(v1.Status_OK, "ConfigMap created successfully"), nil
-	} else { //Already exists, we patch it
-		data, err := s.PrepareDataJsonFromRepository(s.gitAPI, proj)
-		if err != nil {
-			return prepareResponse(v1.Status_FAILED, "Error while parsing configuration data"), err
-		}
+	} else { //Already exists, we update it
 
-		//patch configmap
-		_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Patch(depl.Uid, types.MergePatchType, data)
+		_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Update(&cm)
 		if err != nil {
-			return prepareResponse(v1.Status_FAILED, "Error while patching configmap!"), err
+			return prepareResponse(v1.Status_FAILED, "Error while updating configmap!"), err
 		}
 
 		return prepareResponse(v1.Status_OK, "ConfigMap updated successfully"), nil
