@@ -1,4 +1,4 @@
-FROM golang:1.11.4 as builder
+FROM golang:1.14.3-stretch as builder
 WORKDIR /
 RUN apt-get update && apt-get install unzip
 RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protoc-3.6.1-linux-x86_64.zip

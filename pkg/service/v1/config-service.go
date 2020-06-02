@@ -184,7 +184,7 @@ func (s *configServiceServer) CreateOrReplace(ctx context.Context, req *v1.Insta
 	}
 
 	//check if configmap already exists
-	_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})		
+	_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
 	if err != nil { //Not exists, we create new
 
 		_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Create(&cm)
@@ -414,16 +414,25 @@ func (s *readinessServiceServer) CheckIfReady(ctx context.Context, req *v1.Insta
 		return prepareResponse(v1.Status_FAILED, namespaceNotFound), err
 	}
 
-	app, err := s.kubeAPI.ExtensionsV1beta1().Deployments(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
-	if err != nil {
-		return prepareResponse(v1.Status_FAILED, "Deployment not found!"), err
+	//looking for deployment and checking its status
+	dep, err := s.kubeAPI.ExtensionsV1beta1().Deployments(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
+	if err == nil {
+		if *dep.Spec.Replicas == dep.Status.ReadyReplicas {
+			return prepareResponse(v1.Status_OK, "Deployment is ready"), nil
+		}
+		return prepareResponse(v1.Status_PENDING, "Waiting for deployment"), err
+	} else {
+		//deployment not found, looking for statefulset and checking its status
+		sts, err2 := s.kubeAPI.AppsV1().StatefulSets(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
+		if err2 == nil {
+			if *sts.Spec.Replicas == sts.Status.ReadyReplicas {
+				return prepareResponse(v1.Status_OK, "StatefulSet is ready"), nil
+			}
+			return prepareResponse(v1.Status_PENDING, "Waiting for deployment"), err
+		}
 	}
 
-	if *app.Spec.Replicas == app.Status.ReadyReplicas {
-		return prepareResponse(v1.Status_OK, "Deployment is ready"), nil
-	}
-
-	return prepareResponse(v1.Status_PENDING, "Waiting for deployment"), err
+	return prepareResponse(v1.Status_FAILED, "Neither Deployment nor StatefulSet found!"), err
 }
 
 func (s *informationServiceServer) RetrieveServiceIp(ctx context.Context, req *v1.InstanceRequest) (*v1.InfoServiceResponse, error) {

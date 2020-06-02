@@ -6,6 +6,7 @@ import (
 	"github.com/xanzy/go-gitlab"
 	extension "k8s.io/api/extensions/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 	testclient "k8s.io/client-go/kubernetes/fake"
@@ -82,6 +83,48 @@ func TestReadinessServiceServer_CheckIfReady(t *testing.T) {
 	if err != nil || res.Status != v1.Status_PENDING {
 		t.Fail()
 	}
+}
+
+func TestReadinessServiceServer_CheckIfReadyWithStatefulSet(t *testing.T) {
+	client := testclient.NewSimpleClientset()
+	server := NewReadinessServiceServer(client)
+
+	//Fail on API version check
+	res, err := server.CheckIfReady(context.Background(), &illegal_req)
+	if err == nil || res != nil {
+		t.Fail()
+	}
+
+	//Fail on namespace check
+	freq := v1.InstanceRequest{Api:apiVersion, Deployment:&fake_ns_inst}
+	res, err = server.CheckIfReady(context.Background(), &freq)
+	if err == nil || res.Status != v1.Status_FAILED {
+		t.Fail()
+	}
+
+	//create mock namespace
+	ns := corev1.Namespace{}
+	ns.Name = "test-namespace"
+	_, _ = client.CoreV1().Namespaces().Create(&ns)
+
+	//Fail on missing deployment
+	res, err = server.CheckIfReady(context.Background(), &req)
+	if err == nil || res.Status != v1.Status_FAILED {
+		t.Fail()
+	}
+
+	//create mock statefulset that is fully deployed
+        sts := appsv1.StatefulSet{}
+        sts.Name = "test-uid"
+        q := int32(5)
+        sts.Spec.Replicas = &q
+        sts.Status.ReadyReplicas = q
+        _, _ = client.AppsV1().StatefulSets("test-namespace").Create(&sts)
+
+        res, err = server.CheckIfReady(context.Background(), &req)
+        if err != nil || res.Status != v1.Status_OK {
+                t.Fail()
+        }
 }
 
 func TestInformationServiceServer_RetrieveServiceIp(t *testing.T) {
