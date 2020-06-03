@@ -222,7 +222,7 @@ func (s *configServiceServer) DeleteIfExists(ctx context.Context, req *v1.Instan
 	//check if configmap exist
 	_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
 	if err != nil {
-		return prepareResponse(v1.Status_OK,"ConfigMap not exists or is unavailable"), nil
+		return prepareResponse(v1.Status_OK, "ConfigMap not exists or is unavailable"), nil
 	}
 
 	//delete configmap
@@ -414,25 +414,29 @@ func (s *readinessServiceServer) CheckIfReady(ctx context.Context, req *v1.Insta
 		return prepareResponse(v1.Status_FAILED, namespaceNotFound), err
 	}
 
-	//looking for deployment and checking its status
+	log.Print("looking for deployment and checking its status")
 	dep, err := s.kubeAPI.ExtensionsV1beta1().Deployments(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
-	if err == nil {
-		if *dep.Spec.Replicas == dep.Status.ReadyReplicas {
-			return prepareResponse(v1.Status_OK, "Deployment is ready"), nil
-		}
-		return prepareResponse(v1.Status_PENDING, "Waiting for deployment"), err
-	} else {
-		//deployment not found, looking for statefulset and checking its status
+	if err != nil {
+		log.Print("deployment not found, looking for statefulset and checking its status")
 		sts, err2 := s.kubeAPI.AppsV1().StatefulSets(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
-		if err2 == nil {
+		if err2 != nil {
+			log.Print("statefulset not found as well")
+			return prepareResponse(v1.Status_FAILED, "Neither Deployment nor StatefulSet found!"), err2
+		} else {
+			log.Print("statefulset found, verifying status")
 			if *sts.Spec.Replicas == sts.Status.ReadyReplicas {
 				return prepareResponse(v1.Status_OK, "StatefulSet is ready"), nil
 			}
-			return prepareResponse(v1.Status_PENDING, "Waiting for deployment"), err
+			return prepareResponse(v1.Status_PENDING, "Waiting for statefulset"), nil
 		}
+	} else {
+		log.Print("deployment found, verifying status")
+		if *dep.Spec.Replicas == dep.Status.ReadyReplicas {
+			return prepareResponse(v1.Status_OK, "Deployment is ready"), nil
+		}
+		return prepareResponse(v1.Status_PENDING, "Waiting for deployment"), nil
 	}
 
-	return prepareResponse(v1.Status_FAILED, "Neither Deployment nor StatefulSet found!"), err
 }
 
 func (s *informationServiceServer) RetrieveServiceIp(ctx context.Context, req *v1.InstanceRequest) (*v1.InfoServiceResponse, error) {

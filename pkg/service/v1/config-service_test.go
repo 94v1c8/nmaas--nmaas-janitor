@@ -114,17 +114,17 @@ func TestReadinessServiceServer_CheckIfReadyWithStatefulSet(t *testing.T) {
 	}
 
 	//create mock statefulset that is fully deployed
-        sts := appsv1.StatefulSet{}
-        sts.Name = "test-uid"
-        q := int32(5)
-        sts.Spec.Replicas = &q
-        sts.Status.ReadyReplicas = q
-        _, _ = client.AppsV1().StatefulSets("test-namespace").Create(&sts)
+	sts := appsv1.StatefulSet{}
+	sts.Name = "test-uid"
+	q := int32(5)
+	sts.Spec.Replicas = &q
+	sts.Status.ReadyReplicas = q
+	_, _ = client.AppsV1().StatefulSets("test-namespace").Create(&sts)
 
-        res, err = server.CheckIfReady(context.Background(), &req)
-        if err != nil || res.Status != v1.Status_OK {
-                t.Fail()
-        }
+	res, err = server.CheckIfReady(context.Background(), &req)
+	if err != nil || res.Status != v1.Status_OK {
+		t.Fail()
+	}
 }
 
 func TestInformationServiceServer_RetrieveServiceIp(t *testing.T) {
