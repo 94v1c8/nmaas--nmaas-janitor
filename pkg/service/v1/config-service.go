@@ -180,7 +180,7 @@ func (s *configServiceServer) CreateOrReplace(ctx context.Context, req *v1.Insta
 	cm.Data, err = s.PrepareDataMapFromRepository(s.gitAPI, proj)
 
 	if err != nil {
-		return prepareResponse(v1.Status_FAILED, "Failed to retrieve data from repository"), err
+		log.Print("Did not retrieve any config files from repository. Will create an empty configMap.")
 	}
 
 	//check if configmap already exists
