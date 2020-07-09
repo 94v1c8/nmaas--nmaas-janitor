@@ -118,32 +118,82 @@ func (s *configServiceServer) FindGitlabProjectId(api *gitlab.Client, uid string
 }
 
 //Parse repository files into string:string map for configmap creator
-func (s *configServiceServer) PrepareDataMapFromRepository(api *gitlab.Client, repoId int) (map[string]string, error) {
+func (s *configServiceServer) PrepareDataMapFromRepository(api *gitlab.Client, repoId int) (map[string]map[string]string, error) {
 
-	compiledMap := make(map[string]string)
+	var compiledMap = map[string]map[string]string{}
 
-	//List files
-	tree, _, err := api.Repositories.ListTree(repoId, nil)
+	//Processing files in root directory
+	log.Print("Processing files in root directory")
+
+	rootTree, _, err := api.Repositories.ListTree(repoId, nil)
 	if err != nil {
 		log.Print(err)
-		return nil, status.Errorf(codes.NotFound, "Cannot find any config files")
 	}
 
+	directoryMap := make(map[string]string)
+
 	//Start parsing
-	for _, file := range tree {
+	for _, file := range rootTree {
+
 		if file.Type != "blob" {
 			continue
 		}
+		log.Printf("Processing new file from repository (name: %s, path: %s)", file.Name, file.Path)
 
 		opt := &gitlab.GetRawFileOptions{Ref: gitlab.String("master")}
-		data, _, err := api.RepositoryFiles.GetRawFile(repoId, file.Name, opt)
+		fileContent, _, err := api.RepositoryFiles.GetRawFile(repoId, file.Path, opt)
 		if err != nil {
 			log.Print(err)
 			return nil, status.Errorf(codes.Internal, "Error while reading file from Gitlab!")
 		}
 
 		//assign retrieved binary data to newly created configmap
-		compiledMap[file.Name] = string(data)
+		directoryMap[file.Name] = string(fileContent)
+	}
+
+	compiledMap[""] = directoryMap
+
+	//List files recursively
+	opt := &gitlab.ListTreeOptions{Recursive: gitlab.Bool(true)}
+	treeRec, _, err := api.Repositories.ListTree(repoId, opt)
+
+	//List directories (apart from root)
+	for _, directory := range treeRec {
+
+		if directory.Type == "tree" {
+
+			log.Printf("Processing new directory from repository (name: %s, path: %s)", directory.Name, directory.Path)
+
+			opt := &gitlab.ListTreeOptions{Path: gitlab.String(directory.Path), Recursive: gitlab.Bool(true)}
+			dirTree, _, err := api.Repositories.ListTree(repoId, opt)
+			if err != nil {
+				log.Print(err)
+			}
+
+			directoryMap := make(map[string]string)
+
+			//Start parsing
+			for _, file := range dirTree {
+
+				if file.Type != "blob" {
+					continue
+				}
+
+				log.Printf("Processing new file from repository (name: %s, path: %s)", file.Name, file.Path)
+
+				opt := &gitlab.GetRawFileOptions{Ref: gitlab.String("master")}
+				fileContent, _, err := api.RepositoryFiles.GetRawFile(repoId, file.Path, opt)
+				if err != nil {
+					log.Print(err)
+					return nil, status.Errorf(codes.Internal, "Error while reading file from Gitlab!")
+				}
+
+				//assign retrieved binary data to newly created configmap
+				directoryMap[file.Name] = string(fileContent)
+			}
+
+			compiledMap[directory.Name] = directoryMap
+		}
 	}
 
 	return compiledMap, nil
@@ -165,7 +215,7 @@ func (s *configServiceServer) CreateOrReplace(ctx context.Context, req *v1.Insta
 
 	//check if given k8s namespace exists
 	_, err = s.kubeAPI.CoreV1().Namespaces().Get(depl.Namespace, metav1.GetOptions{})
-	if err != nil{
+	if err != nil {
 		ns := apiv1.Namespace{}
 		ns.Name = depl.Namespace
 		_, err = s.kubeAPI.CoreV1().Namespaces().Create(&ns)
@@ -174,34 +224,45 @@ func (s *configServiceServer) CreateOrReplace(ctx context.Context, req *v1.Insta
 		}
 	}
 
-	cm := apiv1.ConfigMap{}
-	cm.SetName(depl.Uid)
-	cm.SetNamespace(depl.Namespace)
-	cm.Data, err = s.PrepareDataMapFromRepository(s.gitAPI, proj)
+	var repo = map[string]map[string]string{}
 
+	repo, err = s.PrepareDataMapFromRepository(s.gitAPI, proj)
 	if err != nil {
-		log.Print("Did not retrieve any config files from repository. Will create an empty configMap.")
+		log.Print("Error occured while retriving content of the Git repository. Will not create any ConfigMap")
+		return prepareResponse(v1.Status_FAILED, "Failed to create ConfigMap"), err
 	}
 
-	//check if configmap already exists
-	_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
-	if err != nil { //Not exists, we create new
+	for directory, files := range repo {
 
-		_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Create(&cm)
-		if err != nil {
-			return prepareResponse(v1.Status_FAILED, "Failed to create ConfigMap"), err
+		cm := apiv1.ConfigMap{}
+		if len(directory) > 0 {
+			cm.SetName(depl.Uid + "-" + directory)
+		} else {
+			cm.SetName(depl.Uid)
 		}
+		cm.SetNamespace(depl.Namespace)
+		cm.Data = files
 
-		return prepareResponse(v1.Status_OK, "ConfigMap created successfully"), nil
-	} else { //Already exists, we update it
+		//check if configmap already exists
+		_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Get(cm.Name, metav1.GetOptions{})
 
-		_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Update(&cm)
-		if err != nil {
-			return prepareResponse(v1.Status_FAILED, "Error while updating configmap!"), err
+		if err != nil { //Not exists, we create new
+
+			_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Create(&cm)
+			if err != nil {
+				return prepareResponse(v1.Status_FAILED, "Failed to create ConfigMap"), err
+			}
+
+		} else { //Already exists, we update it
+
+			_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Update(&cm)
+			if err != nil {
+				return prepareResponse(v1.Status_FAILED, "Error while updating configmap!"), err
+			}
 		}
-
-		return prepareResponse(v1.Status_OK, "ConfigMap updated successfully"), nil
 	}
+
+	return prepareResponse(v1.Status_OK, "ConfigMap created successfully"), nil
 }
 
 //Delete configmap for instance
