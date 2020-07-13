@@ -12,6 +12,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"log"
 	"math/rand"
+	"strings"
 
 	"code.geant.net/stash/scm/nmaas/nmaas-janitor/pkg/api/v1"
 	"github.com/johnaoss/htpasswd/apr1"
@@ -265,7 +266,7 @@ func (s *configServiceServer) CreateOrReplace(ctx context.Context, req *v1.Insta
 	return prepareResponse(v1.Status_OK, "ConfigMap created successfully"), nil
 }
 
-//Delete configmap for instance
+//Delete all config maps for instance
 func (s *configServiceServer) DeleteIfExists(ctx context.Context, req *v1.InstanceRequest) (*v1.ServiceResponse, error) {
 	// check if the API version requested by client is supported by server
 	if err := checkAPI(req.Api, apiVersion); err != nil {
@@ -280,19 +281,25 @@ func (s *configServiceServer) DeleteIfExists(ctx context.Context, req *v1.Instan
 		return prepareResponse(v1.Status_FAILED, namespaceNotFound), err
 	}
 
-	//check if configmap exist
-	_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
+	//retrieve list of configmaps in namespace
+	configMaps, err := s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).List(metav1.ListOptions{})
 	if err != nil {
-		return prepareResponse(v1.Status_OK, "ConfigMap not exists or is unavailable"), nil
+		return prepareResponse(v1.Status_OK, "Could not retrieve list of ConfigMaps in namespace"), nil
 	}
 
-	//delete configmap
-	err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Delete(depl.Uid, &metav1.DeleteOptions{})
-	if err != nil {
-		return prepareResponse(v1.Status_FAILED, "Error while removing configmap!"), err
+    for _, configmap := range configMaps.Items {
+		//check if configmap belongs to instance
+		if configmap.Name == depl.Uid || strings.Contains(configmap.Name, depl.Uid + "-") {
+			//delete configmap
+			log.Printf("Deleting ConfigMap named %s", configmap.Name)
+			err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Delete(configmap.Name, &metav1.DeleteOptions{})
+			if err != nil {
+				log.Printf("Error occured while deleting ConfigMap %s", configmap.Name)
+			}
+		}
 	}
 
-	return prepareResponse(v1.Status_OK, "ConfigMap deleted successfully"), nil
+	return prepareResponse(v1.Status_OK, "ConfigMaps deleted successfully"), nil
 }
 
 func randomString(l int) string {
