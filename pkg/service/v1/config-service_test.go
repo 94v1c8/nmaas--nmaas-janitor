@@ -4,7 +4,6 @@ import (
 	"code.geant.net/stash/scm/nmaas/nmaas-janitor/pkg/api/v1"
 	"context"
 	"github.com/xanzy/go-gitlab"
-	extension "k8s.io/api/extensions/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -62,12 +61,12 @@ func TestReadinessServiceServer_CheckIfReady(t *testing.T) {
 	}
 
 	//create mock deployment that is fully deployed
-	depl := extension.Deployment{}
+	depl := appsv1.Deployment{}
 	depl.Name = "test-uid"
 	q := int32(5)
 	depl.Spec.Replicas = &q
 	depl.Status.ReadyReplicas = q
-	_, _ = client.ExtensionsV1beta1().Deployments("test-namespace").Create(&depl)
+	_, _ = client.AppsV1().Deployments("test-namespace").Create(&depl)
 
 	res, err = server.CheckIfReady(context.Background(), &req)
 	if err != nil || res.Status != v1.Status_OK {
@@ -77,7 +76,7 @@ func TestReadinessServiceServer_CheckIfReady(t *testing.T) {
 	//modify mock deployment to be partially deployed
 	p := int32(3)
 	depl.Status.ReadyReplicas = p
-	_, _ = client.ExtensionsV1beta1().Deployments("test-namespace").Update(&depl)
+	_, _ = client.AppsV1().Deployments("test-namespace").Update(&depl)
 
 	res, err = server.CheckIfReady(context.Background(), &req)
 	if err != nil || res.Status != v1.Status_PENDING {

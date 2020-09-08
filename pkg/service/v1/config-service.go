@@ -483,7 +483,7 @@ func (s *readinessServiceServer) CheckIfReady(ctx context.Context, req *v1.Insta
 	}
 
 	log.Print("looking for deployment and checking its status")
-	dep, err := s.kubeAPI.ExtensionsV1beta1().Deployments(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
+	dep, err := s.kubeAPI.AppsV1().Deployments(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
 	if err != nil {
 		log.Print("deployment not found, looking for statefulset and checking its status")
 		sts, err2 := s.kubeAPI.AppsV1().StatefulSets(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
