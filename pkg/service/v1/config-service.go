@@ -215,11 +215,11 @@ func (s *configServiceServer) CreateOrReplace(ctx context.Context, req *v1.Insta
 	}
 
 	//check if given k8s namespace exists
-	_, err = s.kubeAPI.CoreV1().Namespaces().Get(depl.Namespace, metav1.GetOptions{})
+	_, err = s.kubeAPI.CoreV1().Namespaces().Get(ctx, depl.Namespace, metav1.GetOptions{})
 	if err != nil {
 		ns := apiv1.Namespace{}
 		ns.Name = depl.Namespace
-		_, err = s.kubeAPI.CoreV1().Namespaces().Create(&ns)
+		_, err = s.kubeAPI.CoreV1().Namespaces().Create(ctx, &ns, metav1.CreateOptions{})
 		if err != nil {
 			return prepareResponse(v1.Status_FAILED, namespaceNotFound), err
 		}
@@ -245,18 +245,18 @@ func (s *configServiceServer) CreateOrReplace(ctx context.Context, req *v1.Insta
 		cm.Data = files
 
 		//check if configmap already exists
-		_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Get(cm.Name, metav1.GetOptions{})
+		_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Get(ctx, cm.Name, metav1.GetOptions{})
 
 		if err != nil { //Not exists, we create new
 
-			_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Create(&cm)
+			_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Create(ctx, &cm, metav1.CreateOptions{})
 			if err != nil {
 				return prepareResponse(v1.Status_FAILED, "Failed to create ConfigMap"), err
 			}
 
 		} else { //Already exists, we update it
 
-			_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Update(&cm)
+			_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Update(ctx, &cm, metav1.UpdateOptions{})
 			if err != nil {
 				return prepareResponse(v1.Status_FAILED, "Error while updating configmap!"), err
 			}
@@ -276,13 +276,13 @@ func (s *configServiceServer) DeleteIfExists(ctx context.Context, req *v1.Instan
 	depl := req.Deployment
 
 	//check if given k8s namespace exists
-	_, err := s.kubeAPI.CoreV1().Namespaces().Get(depl.Namespace, metav1.GetOptions{})
+	_, err := s.kubeAPI.CoreV1().Namespaces().Get(ctx, depl.Namespace, metav1.GetOptions{})
 	if err != nil {
 		return prepareResponse(v1.Status_FAILED, namespaceNotFound), err
 	}
 
 	//retrieve list of configmaps in namespace
-	configMaps, err := s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).List(metav1.ListOptions{})
+	configMaps, err := s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return prepareResponse(v1.Status_OK, "Could not retrieve list of ConfigMaps in namespace"), nil
 	}
@@ -292,7 +292,7 @@ func (s *configServiceServer) DeleteIfExists(ctx context.Context, req *v1.Instan
 		if configmap.Name == depl.Uid || strings.Contains(configmap.Name, depl.Uid + "-") {
 			//delete configmap
 			log.Printf("Deleting ConfigMap named %s", configmap.Name)
-			err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Delete(configmap.Name, &metav1.DeleteOptions{})
+			err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Delete(ctx, configmap.Name, metav1.DeleteOptions{})
 			if err != nil {
 				log.Printf("Error occured while deleting ConfigMap %s", configmap.Name)
 			}
@@ -359,11 +359,11 @@ func (s *basicAuthServiceServer) CreateOrReplace(ctx context.Context, req *v1.In
 	depl := req.Instance
 
 	//check if given k8s namespace exists
-	_, err := s.kubeAPI.CoreV1().Namespaces().Get(depl.Namespace, metav1.GetOptions{})
+	_, err := s.kubeAPI.CoreV1().Namespaces().Get(ctx, depl.Namespace, metav1.GetOptions{})
 	if err != nil{
 		ns := apiv1.Namespace{}
 		ns.Name = depl.Namespace
-		_, err = s.kubeAPI.CoreV1().Namespaces().Create(&ns)
+		_, err = s.kubeAPI.CoreV1().Namespaces().Create(ctx, &ns, metav1.CreateOptions{})
 		if err != nil {
 			return prepareResponse(v1.Status_FAILED, namespaceNotFound), err
 		}
@@ -371,7 +371,7 @@ func (s *basicAuthServiceServer) CreateOrReplace(ctx context.Context, req *v1.In
 
 	secretName := getAuthSecretName(depl.Uid)
 
-	_, err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Get(secretName, metav1.GetOptions{})
+	_, err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Get(ctx, secretName, metav1.GetOptions{})
 	//Secret does not exist, we have to create it
 	if err != nil {
 		//create secret
@@ -384,7 +384,7 @@ func (s *basicAuthServiceServer) CreateOrReplace(ctx context.Context, req *v1.In
 		}
 
 		//commit secret
-		_, err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Create(&secret)
+		_, err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Create(ctx, &secret, metav1.CreateOptions{})
 		if err != nil {
 			return prepareResponse(v1.Status_FAILED, "Error while creating secret!"), err
 		}
@@ -397,7 +397,7 @@ func (s *basicAuthServiceServer) CreateOrReplace(ctx context.Context, req *v1.In
 		}
 
 		//patch secret
-		_, err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Patch(secretName, types.MergePatchType, patch)
+		_, err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Patch(ctx, secretName, types.MergePatchType, patch, metav1.PatchOptions{})
 		if err != nil {
 			return prepareResponse(v1.Status_FAILED, "Error while patching secret!"), err
 		}
@@ -415,7 +415,7 @@ func (s *basicAuthServiceServer) DeleteIfExists(ctx context.Context, req *v1.Ins
 	depl := req.Deployment
 
 	//check if given k8s namespace exists
-	_, err := s.kubeAPI.CoreV1().Namespaces().Get(depl.Namespace, metav1.GetOptions{})
+	_, err := s.kubeAPI.CoreV1().Namespaces().Get(ctx, depl.Namespace, metav1.GetOptions{})
 	if err != nil {
 		return prepareResponse(v1.Status_FAILED, namespaceNotFound), err
 	}
@@ -423,13 +423,13 @@ func (s *basicAuthServiceServer) DeleteIfExists(ctx context.Context, req *v1.Ins
 	secretName := getAuthSecretName(depl.Uid)
 
 	//check if secret exist
-	_, err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Get(secretName, metav1.GetOptions{})
+	_, err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Get(ctx, secretName, metav1.GetOptions{})
 	if err != nil {
 		return prepareResponse(v1.Status_OK,"Secret does not exist"), nil
 	}
 
 	//delete secret
-	err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Delete(secretName, &metav1.DeleteOptions{})
+	err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Delete(ctx, secretName, metav1.DeleteOptions{})
 	if err != nil {
 		return prepareResponse(v1.Status_FAILED, "Error while removing secret!"), err
 	}
@@ -446,7 +446,7 @@ func (s *certManagerServiceServer) DeleteIfExists(ctx context.Context, req *v1.I
 	depl := req.Deployment
 
 	//check if given k8s namespace exists
-	_, err := s.kubeAPI.CoreV1().Namespaces().Get(depl.Namespace, metav1.GetOptions{})
+	_, err := s.kubeAPI.CoreV1().Namespaces().Get(ctx, depl.Namespace, metav1.GetOptions{})
 	if err != nil {
 		return prepareResponse(v1.Status_FAILED, namespaceNotFound), err
 	}
@@ -454,13 +454,13 @@ func (s *certManagerServiceServer) DeleteIfExists(ctx context.Context, req *v1.I
 	secretName := depl.Uid + "-tls"
 
 	//check if secret exist
-	_, err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Get(secretName, metav1.GetOptions{})
+	_, err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Get(ctx, secretName, metav1.GetOptions{})
 	if err != nil {
 		return prepareResponse(v1.Status_OK,"Secret does not exist"), nil
 	}
 
 	//delete secret
-	err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Delete(secretName, &metav1.DeleteOptions{})
+	err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Delete(ctx, secretName, metav1.DeleteOptions{})
 	if err != nil {
 		return prepareResponse(v1.Status_FAILED, "Error while removing secret!"), err
 	}
@@ -477,16 +477,16 @@ func (s *readinessServiceServer) CheckIfReady(ctx context.Context, req *v1.Insta
 	depl := req.Deployment
 
 	//check if given k8s namespace exists
-	_, err := s.kubeAPI.CoreV1().Namespaces().Get(depl.Namespace, metav1.GetOptions{})
+	_, err := s.kubeAPI.CoreV1().Namespaces().Get(ctx, depl.Namespace, metav1.GetOptions{})
 	if err != nil {
 		return prepareResponse(v1.Status_FAILED, namespaceNotFound), err
 	}
 
 	log.Print("looking for deployment and checking its status")
-	dep, err := s.kubeAPI.AppsV1().Deployments(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
+	dep, err := s.kubeAPI.AppsV1().Deployments(depl.Namespace).Get(ctx, depl.Uid, metav1.GetOptions{})
 	if err != nil {
 		log.Print("deployment not found, looking for statefulset and checking its status")
-		sts, err2 := s.kubeAPI.AppsV1().StatefulSets(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
+		sts, err2 := s.kubeAPI.AppsV1().StatefulSets(depl.Namespace).Get(ctx, depl.Uid, metav1.GetOptions{})
 		if err2 != nil {
 			log.Print("statefulset not found as well")
 			return prepareResponse(v1.Status_FAILED, "Neither Deployment nor StatefulSet found!"), err2
@@ -519,14 +519,14 @@ func (s *informationServiceServer) RetrieveServiceIp(ctx context.Context, req *v
 	depl := req.Deployment
 
 	//check if given k8s namespace exists
-	_, err := s.kubeAPI.CoreV1().Namespaces().Get(depl.Namespace, metav1.GetOptions{})
+	_, err := s.kubeAPI.CoreV1().Namespaces().Get(ctx, depl.Namespace, metav1.GetOptions{})
 	if err != nil {
 		return prepareInfoResponse(v1.Status_FAILED, namespaceNotFound, ""), err
 	}
 
 	log.Printf("About to read service %s details from namespace %s", depl.Uid, depl.Namespace)
 
-	app, err := s.kubeAPI.CoreV1().Services(depl.Namespace).Get(depl.Uid, metav1.GetOptions{})
+	app, err := s.kubeAPI.CoreV1().Services(depl.Namespace).Get(ctx, depl.Uid, metav1.GetOptions{})
 	if err != nil {
 		return prepareInfoResponse(v1.Status_FAILED, "Service not found!", ""), err
 	}

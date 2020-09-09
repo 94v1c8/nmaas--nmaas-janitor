@@ -37,18 +37,19 @@ func RunServer() error {
 
 	//Initialize kubernetes API
 	config, err := rest.InClusterConfig()
-    if err != nil {
-        log.Fatal(err)
+	if err != nil {
+		log.Fatal(err)
 	}
+
 	clientset, err := kubernetes.NewForConfig(config)
-    if err != nil {
-        log.Fatal(err)
-    }
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	kubeAPI := clientset
 
 	//Initialize Gitlab API
-	gitAPI := gitlab.NewClient(nil, cfg.GitlabToken)
-	err = gitAPI.SetBaseURL(cfg.GitlabURL)
+	gitAPI, err := gitlab.NewClient(cfg.GitlabToken, gitlab.WithBaseURL(cfg.GitlabURL))
 	if err != nil {
 		log.Fatal(err)
 	}
