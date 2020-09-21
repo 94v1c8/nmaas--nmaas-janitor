@@ -52,7 +52,7 @@ func TestReadinessServiceServer_CheckIfReady(t *testing.T) {
 	//create mock namespace
 	ns := corev1.Namespace{}
 	ns.Name = "test-namespace"
-	_, _ = client.CoreV1().Namespaces().Create(&ns)
+	_, _ = client.CoreV1().Namespaces().Create(context.Background(), &ns, metav1.CreateOptions{})
 
 	//Fail on deployment
 	res, err = server.CheckIfReady(context.Background(), &req)
@@ -66,7 +66,7 @@ func TestReadinessServiceServer_CheckIfReady(t *testing.T) {
 	q := int32(5)
 	depl.Spec.Replicas = &q
 	depl.Status.ReadyReplicas = q
-	_, _ = client.AppsV1().Deployments("test-namespace").Create(&depl)
+	_, _ = client.AppsV1().Deployments("test-namespace").Create(context.Background(), &depl, metav1.CreateOptions{})
 
 	res, err = server.CheckIfReady(context.Background(), &req)
 	if err != nil || res.Status != v1.Status_OK {
@@ -76,7 +76,7 @@ func TestReadinessServiceServer_CheckIfReady(t *testing.T) {
 	//modify mock deployment to be partially deployed
 	p := int32(3)
 	depl.Status.ReadyReplicas = p
-	_, _ = client.AppsV1().Deployments("test-namespace").Update(&depl)
+	_, _ = client.AppsV1().Deployments("test-namespace").Update(context.Background(), &depl, metav1.UpdateOptions{})
 
 	res, err = server.CheckIfReady(context.Background(), &req)
 	if err != nil || res.Status != v1.Status_PENDING {
@@ -104,7 +104,7 @@ func TestReadinessServiceServer_CheckIfReadyWithStatefulSet(t *testing.T) {
 	//create mock namespace
 	ns := corev1.Namespace{}
 	ns.Name = "test-namespace"
-	_, _ = client.CoreV1().Namespaces().Create(&ns)
+	_, _ = client.CoreV1().Namespaces().Create(context.Background(), &ns, metav1.CreateOptions{})
 
 	//Fail on missing deployment
 	res, err = server.CheckIfReady(context.Background(), &req)
@@ -118,7 +118,7 @@ func TestReadinessServiceServer_CheckIfReadyWithStatefulSet(t *testing.T) {
 	q := int32(5)
 	sts.Spec.Replicas = &q
 	sts.Status.ReadyReplicas = q
-	_, _ = client.AppsV1().StatefulSets("test-namespace").Create(&sts)
+	_, _ = client.AppsV1().StatefulSets("test-namespace").Create(context.Background(), &sts, metav1.CreateOptions{})
 
 	res, err = server.CheckIfReady(context.Background(), &req)
 	if err != nil || res.Status != v1.Status_OK {
@@ -146,7 +146,7 @@ func TestInformationServiceServer_RetrieveServiceIp(t *testing.T) {
 	//create mock namespace
 	ns := corev1.Namespace{}
 	ns.Name = "test-namespace"
-	_, _ = client.CoreV1().Namespaces().Create(&ns)
+	_, _ = client.CoreV1().Namespaces().Create(context.Background(), &ns, metav1.CreateOptions{})
 
 	//Fail on loading services
 	res, err = server.RetrieveServiceIp(context.Background(), &req)
@@ -157,7 +157,7 @@ func TestInformationServiceServer_RetrieveServiceIp(t *testing.T) {
 	//create mock service without ingress
 	s1 := corev1.Service{}
 	s1.Name = "test-uid"
-	_, _ = client.CoreV1().Services("test-namespace").Create(&s1)
+	_, _ = client.CoreV1().Services("test-namespace").Create(context.Background(), &s1, metav1.CreateOptions{})
 
 	//Fail on missing service ingress
 	res, err = server.RetrieveServiceIp(context.Background(), &req)
@@ -171,8 +171,8 @@ func TestInformationServiceServer_RetrieveServiceIp(t *testing.T) {
 	i1 := corev1.LoadBalancerIngress{}
 	ing := []corev1.LoadBalancerIngress{i1}
 	s2.Status.LoadBalancer.Ingress = ing
-	client.CoreV1().Services("test-namespace").Delete("test-uid", &metav1.DeleteOptions{})
-	_, _ = client.CoreV1().Services("test-namespace").Create(&s2)
+	client.CoreV1().Services("test-namespace").Delete(context.Background(), "test-uid", metav1.DeleteOptions{})
+	_, _ = client.CoreV1().Services("test-namespace").Create(context.Background(), &s2, metav1.CreateOptions{})
 
 	//Fail on missing service ingress IP
 	res, err = server.RetrieveServiceIp(context.Background(), &req)
@@ -187,8 +187,8 @@ func TestInformationServiceServer_RetrieveServiceIp(t *testing.T) {
 	i2.IP = "10.10.1.1"
 	ing2 := []corev1.LoadBalancerIngress{i2}
 	s3.Status.LoadBalancer.Ingress = ing2
-	client.CoreV1().Services("test-namespace").Delete("test-uid", &metav1.DeleteOptions{})
-	_, _ = client.CoreV1().Services("test-namespace").Create(&s3)
+	client.CoreV1().Services("test-namespace").Delete(context.Background(), "test-uid", metav1.DeleteOptions{})
+	_, _ = client.CoreV1().Services("test-namespace").Create(context.Background(), &s3, metav1.CreateOptions{})
 
 	//Pass
 	res, err = server.RetrieveServiceIp(context.Background(), &req)
@@ -217,7 +217,7 @@ func TestCertManagerServiceServer_DeleteIfExists(t *testing.T) {
 	//create mock namespace
 	ns := corev1.Namespace{}
 	ns.Name = "test-namespace"
-	_, _ = client.CoreV1().Namespaces().Create(&ns)
+	_, _ = client.CoreV1().Namespaces().Create(context.Background(), &ns, metav1.CreateOptions{})
 
 	//Pass if already nonexistent
 	res, err = server.DeleteIfExists(context.Background(), &req)
@@ -228,7 +228,7 @@ func TestCertManagerServiceServer_DeleteIfExists(t *testing.T) {
 	//Create mock secret
 	sec := corev1.Secret{}
 	sec.Name = "test-uid-tls"
-	_, _ = client.CoreV1().Secrets("test-namespace").Create(&sec)
+	_, _ = client.CoreV1().Secrets("test-namespace").Create(context.Background(), &sec, metav1.CreateOptions{})
 
 	//Pass
 	res, err = server.DeleteIfExists(context.Background(), &req)
@@ -253,7 +253,7 @@ func TestBasicAuthServiceServer_DeleteIfExists(t *testing.T) {
 	//create mock namespace
 	ns := corev1.Namespace{}
 	ns.Name = "test-namespace"
-	_, _ = client.CoreV1().Namespaces().Create(&ns)
+	_, _ = client.CoreV1().Namespaces().Create(context.Background(), &ns, metav1.CreateOptions{})
 
 	//Pass if already nonexistent
 	res, err = server.DeleteIfExists(context.Background(), &req)
@@ -264,7 +264,7 @@ func TestBasicAuthServiceServer_DeleteIfExists(t *testing.T) {
 	//Create mock secret
 	sec := corev1.Secret{}
 	sec.Name = getAuthSecretName("test-uid")
-	_, _ = client.CoreV1().Secrets("test-namespace").Create(&sec)
+	_, _ = client.CoreV1().Secrets("test-namespace").Create(context.Background() ,&sec, metav1.CreateOptions{})
 
 	//Pass
 	res, err = server.DeleteIfExists(context.Background(), &req)
@@ -290,7 +290,7 @@ func TestBasicAuthServiceServer_CreateOrReplace(t *testing.T) {
 		t.Fail()
 	}
 
-	sec, err := client.CoreV1().Secrets("test-namespace").Get(getAuthSecretName("test-uid"), metav1.GetOptions{})
+	sec, err := client.CoreV1().Secrets("test-namespace").Get(context.Background(), getAuthSecretName("test-uid"), metav1.GetOptions{})
 	if err != nil || sec == nil {
 		t.Fail()
 	}
@@ -322,7 +322,7 @@ func TestConfigServiceServer_DeleteIfExists(t *testing.T) {
 	//create mock namespace
 	ns := corev1.Namespace{}
 	ns.Name = "test-namespace"
-	_, _ = client.CoreV1().Namespaces().Create(&ns)
+	_, _ = client.CoreV1().Namespaces().Create(context.Background(), &ns, metav1.CreateOptions{})
 
 	//Should return ok on configmap check if missing
 	res, err = server.DeleteIfExists(context.Background(), &req)
@@ -333,7 +333,7 @@ func TestConfigServiceServer_DeleteIfExists(t *testing.T) {
 	//create mock configmap
 	cm := corev1.ConfigMap{}
 	cm.Name = "test-uid"
-	_, _ = client.CoreV1().ConfigMaps("test-namespace").Create(&cm)
+	_, _ = client.CoreV1().ConfigMaps("test-namespace").Create(context.Background(), &cm, metav1.CreateOptions{})
 
 	//should pass on deleting existing configmap
 	res, err = server.DeleteIfExists(context.Background(), &req)
