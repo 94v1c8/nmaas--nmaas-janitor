@@ -1,4 +1,4 @@
-FROM golang:1.14.3-stretch as builder
+FROM golang:1.15.2-buster as builder
 WORKDIR /
 RUN apt-get update && apt-get install unzip
 RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v3.13.0/protoc-3.13.0-linux-x86_64.zip
@@ -16,6 +16,6 @@ WORKDIR /build/pkg/cmd/server
 RUN CGO_ENABLED=0 GOOS=linux go build
 
 FROM alpine:latest
-MAINTAINER Michał Bień
+MAINTAINER Lukasz Lopatowski (llopat@man.poznan.pl)
 COPY --from=builder /build/pkg/cmd/server/server /go/bin/nmaas-janitor
 ENTRYPOINT /go/bin/nmaas-janitor -port $SERVER_PORT -token $GITLAB_TOKEN -url $GITLAB_URL
