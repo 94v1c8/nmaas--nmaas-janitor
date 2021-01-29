@@ -550,3 +550,31 @@ func (s *informationServiceServer) RetrieveServiceIp(ctx context.Context, req *v
 	}
 
 }
+
+func (s *informationServiceServer) CheckServiceExists(ctx context.Context, req *v1.InstanceRequest) (*v1.InfoServiceResponse, error) {
+
+	log.Printf("Entered CheckServiceExists method")
+
+	// check if the API version requested by client is supported by server
+	if err := checkAPI(req.Api, apiVersion); err != nil {
+		return nil, err
+	}
+
+	depl := req.Deployment
+
+	//check if given k8s namespace exists
+	_, err := s.kubeAPI.CoreV1().Namespaces().Get(ctx, depl.Namespace, metav1.GetOptions{})
+	if err != nil {
+		return prepareInfoResponse(v1.Status_FAILED, namespaceNotFound, ""), err
+	}
+
+	log.Printf("About to read service %s details from namespace %s", depl.Uid, depl.Namespace)
+
+	ser, err := s.kubeAPI.CoreV1().Services(depl.Namespace).Get(ctx, depl.Uid, metav1.GetOptions{})
+	if err != nil {
+		return prepareInfoResponse(v1.Status_FAILED, "Service not found!", ""), err
+	}
+	
+	return prepareInfoResponse(v1.Status_OK, "", ser.Name), err
+
+}

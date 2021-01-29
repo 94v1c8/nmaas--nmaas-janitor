@@ -36,7 +36,7 @@ message InfoServiceResponse {
     string api = 1;
     Status status = 2;
     string message = 3;
-	string info = 4;
+    string info = 4;
 }
 
 message InstanceCredentialsRequest {
@@ -65,4 +65,5 @@ service ReadinessService {
 
 service InformationService {
     rpc RetrieveServiceIp(InstanceRequest) returns (InfoServiceResponse);
+    rpc CheckServiceExists(InstanceRequest) returns (InfoServiceResponse);
 }

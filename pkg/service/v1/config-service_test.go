@@ -197,6 +197,46 @@ func TestInformationServiceServer_RetrieveServiceIp(t *testing.T) {
 	}
 }
 
+func TestInformationServiceServer_CheckServiceExists(t *testing.T) {
+	client := testclient.NewSimpleClientset()
+	server := NewInformationServiceServer(client)
+
+	//Fail on API version check
+	res, err := server.CheckServiceExists(context.Background(), &illegal_req)
+	if err == nil || res != nil {
+		t.Fail()
+	}
+
+	//Fail on namespace check
+	freq := v1.InstanceRequest{Api:apiVersion, Deployment:&fake_ns_inst}
+	res, err = server.CheckServiceExists(context.Background(), &freq)
+	if err == nil || res.Status != v1.Status_FAILED {
+		t.Fail()
+	}
+
+	//create mock namespace
+	ns := corev1.Namespace{}
+	ns.Name = "test-namespace"
+	_, _ = client.CoreV1().Namespaces().Create(context.Background(), &ns, metav1.CreateOptions{})
+
+	//Fail on loading services
+	res, err = server.CheckServiceExists(context.Background(), &req)
+	if err == nil || res.Status != v1.Status_FAILED || res.Message != "Service not found!" {
+		t.Fail()
+	}
+
+	//create mock service without ingress
+	s1 := corev1.Service{}
+	s1.Name = "test-uid"
+	_, _ = client.CoreV1().Services("test-namespace").Create(context.Background(), &s1, metav1.CreateOptions{})
+
+	//Pass
+	res, err = server.CheckServiceExists(context.Background(), &req)
+	if res.Status != v1.Status_OK {
+		t.Fail()
+	}
+}
+
 func TestCertManagerServiceServer_DeleteIfExists(t *testing.T) {
 	client := testclient.NewSimpleClientset()
 	server := NewCertManagerServiceServer(client)
