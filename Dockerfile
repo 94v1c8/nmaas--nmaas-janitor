@@ -16,6 +16,6 @@ WORKDIR /build/pkg/cmd/server
 RUN CGO_ENABLED=0 GOOS=linux go build
 
 FROM alpine:latest
-MAINTAINER Lukasz Lopatowski (llopat@man.poznan.pl)
+MAINTAINER nmaas@lists.geant.org
 COPY --from=builder /build/pkg/cmd/server/server /go/bin/nmaas-janitor
 ENTRYPOINT /go/bin/nmaas-janitor -port $SERVER_PORT -token $GITLAB_TOKEN -url $GITLAB_URL
