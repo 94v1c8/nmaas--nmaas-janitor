@@ -8,7 +8,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	"code.geant.net/stash/scm/nmaas/nmaas-janitor/pkg/api/v1"
+	v1 "bitbucket.software.geant.org/projects/NMAAS/repos/nmaas-janitor/pkg/api/v1"
 )
 
 func RunServer(ctx context.Context, confAPI v1.ConfigServiceServer, authAPI v1.BasicAuthServiceServer,

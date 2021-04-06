@@ -9,8 +9,8 @@ import (
 	"github.com/xanzy/go-gitlab"
 	"log"
 
-	"code.geant.net/stash/scm/nmaas/nmaas-janitor/pkg/protocol/grpc"
-	"code.geant.net/stash/scm/nmaas/nmaas-janitor/pkg/service/v1"
+	"bitbucket.software.geant.org/projects/NMAAS/repos/nmaas-janitor/pkg/protocol/grpc"
+	"bitbucket.software.geant.org/projects/NMAAS/repos/nmaas-janitor/pkg/service/v1"
 )
 
 // Config is configuration for Server

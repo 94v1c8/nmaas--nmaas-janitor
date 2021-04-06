@@ -1,7 +1,7 @@
 package v1
 
 import (
-	"code.geant.net/stash/scm/nmaas/nmaas-janitor/pkg/api/v1"
+	v1 "bitbucket.software.geant.org/projects/NMAAS/repos/nmaas-janitor/pkg/api/v1"
 	"context"
 	"github.com/xanzy/go-gitlab"
 	corev1 "k8s.io/api/core/v1"

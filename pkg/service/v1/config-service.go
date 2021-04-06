@@ -14,7 +14,7 @@ import (
 	"math/rand"
 	"strings"
 
-	"code.geant.net/stash/scm/nmaas/nmaas-janitor/pkg/api/v1"
+	v1 "bitbucket.software.geant.org/projects/NMAAS/repos/nmaas-janitor/pkg/api/v1"
 	"github.com/johnaoss/htpasswd/apr1"
 )
 
