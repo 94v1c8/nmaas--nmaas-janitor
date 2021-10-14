@@ -21,4 +21,4 @@ require (
         k8s.io/klog v0.1.0 // indirect
 )
 
-go 1.15
+go 1.17
