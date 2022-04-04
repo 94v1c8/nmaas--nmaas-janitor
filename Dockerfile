@@ -1,8 +1,8 @@
-FROM golang:1.17.2-buster as builder
+FROM golang:1.17.8-buster as builder
 WORKDIR /
 RUN apt-get update && apt-get install unzip
-RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v3.13.0/protoc-3.13.0-linux-x86_64.zip
-RUN unzip protoc-3.13.0-linux-x86_64.zip -d /
+RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v3.19.4/protoc-3.19.4-linux-x86_64.zip
+RUN unzip protoc-3.19.4-linux-x86_64.zip -d /
 WORKDIR /build
 COPY api/ api
 COPY pkg/ pkg
@@ -19,7 +19,6 @@ RUN go get k8s.io/client-go/kubernetes
 RUN go get k8s.io/client-go/rest
 RUN go get github.com/evanphx/json-patch
 RUN go get github.com/golang/protobuf/protoc-gen-go
-RUN go get k8s.io/kube-openapi/pkg/util/proto
 
 RUN mkdir -p /build/pkg/api/v1
 RUN protoc --proto_path=/build/api/proto/v1 --proto_path=/build/third_party --go_out=plugins=grpc:/build/pkg/api/v1 config-service.proto

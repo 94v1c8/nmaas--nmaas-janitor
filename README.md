@@ -1,19 +1,24 @@
-# NMaaS Janitor - microservice that controls deployments
+# NMaaS Janitor (back-end)
 
-## Used technologies
+#### Microservice that controls deployments
+
+### Technologies
+
 * Go
 * Protobuf
 * gRPC
 * kubernetes/client-go
 * go-gitlab
 
-## Features
+### Features
+
 * Creating deployment ConfigMap(s) when configuration is pushed to GitLab repository
 * Updating deployment ConfigMap(s) on demand
 * Verifying deployment or statefulset status on demand
 * Setting basic auth parameters on Ingress resources on demand
 * Retrieving loadbalancer IP address assigned to given deployment or statefulset
 
-## Deploying
+### Deploying
+
 The provided docker image is a two-stage build image. 
 You don't have to compile protoc yourself, nor configure local golang environment. Just run `docker build`, and image will do all the work for you.
