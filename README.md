@@ -1,6 +1,6 @@
 # NMaaS Janitor (back-end)
 
-#### Microservice that controls deployments
+#### Microservice that interacts with GitLab and Kubernetes API to perform various low level operations on behalf of the NMaaS Platform
 
 ### Technologies
 
