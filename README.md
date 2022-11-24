@@ -1,6 +1,6 @@
 # NMaaS Janitor (back-end)
 
-#### Microservice that interacts with GitLab and Kubernetes API to perform various low level operations on behalf of the NMaaS Platform
+#### NMaaS Janitor is a microservice that interacts with GitLab and Kubernetes API to perform various low level operations on behalf of the NMaaS Platform
 
 ### Technologies
 
@@ -20,5 +20,5 @@
 
 ### Deploying
 
-The provided docker image is a two-stage build image. 
+The provided Dockerfile comprises a two-stage Docker image build. 
 You don't have to compile protoc yourself, nor configure local golang environment. Just run `docker build`, and image will do all the work for you.
