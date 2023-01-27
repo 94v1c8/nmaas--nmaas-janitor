@@ -4,7 +4,7 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: git-sync
-        uses: wei/git-sync@v3
+        uses: korvoj/git-sync@5eacd8ac78ae91a984f3aa430b09a0051abb2dc0
         with:
           source_repo: 'git@github.com:nmaas-platform/nmaas-janitor.git'
           source_branch: 'refs/remotes/source/*'
