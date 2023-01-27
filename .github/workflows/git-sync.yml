@@ -1,7 +1,7 @@
 on: push
 jobs:
   git-sync:
-    runs-on: self-hosted
+    runs-on: ubuntu-22.04
     steps:
       - name: git-sync
         uses: korvoj/git-sync@5eacd8ac78ae91a984f3aa430b09a0051abb2dc0
