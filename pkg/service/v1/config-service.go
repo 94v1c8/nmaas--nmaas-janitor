@@ -94,6 +94,7 @@ func prepareInfoResponse(status v1.Status, message string, info string) *v1.Info
 //Find proper project, given user namespace and instance uid
 func (s *configServiceServer) FindGitlabProjectId(api *gitlab.Client, uid string, domain string) (int, error) {
 	//Find exact group
+	log.Printf("Searching for GitLab Group by domain %s", domain)
 	groups, _, err := api.Groups.SearchGroup(domain)
 	if len(groups) != 1 || err != nil {
 		log.Printf("Found %d groups in domain %s", len(groups), domain)
@@ -102,6 +103,7 @@ func (s *configServiceServer) FindGitlabProjectId(api *gitlab.Client, uid string
 	}
 
 	//List group projects
+	log.Printf("Searching for GitLab Projects within Group %d / %s", groups[0].ID, groups[0].Name)
 	projs, _, err := api.Groups.ListGroupProjects(groups[0].ID, nil)
 	if err != nil || len(projs) == 0 {
 		log.Printf("Group %s is empty or unaccessible", groups[0].Name)
@@ -109,6 +111,7 @@ func (s *configServiceServer) FindGitlabProjectId(api *gitlab.Client, uid string
 	}
 
 	//Find our project in group projects list
+    log.Printf("Found %d Projects and looking for %s", len(groups), uid)
 	for _, proj := range projs {
 		if proj.Name == uid {
 			return proj.ID, nil
@@ -229,7 +232,7 @@ func (s *configServiceServer) CreateOrReplace(ctx context.Context, req *v1.Insta
 
 	repo, err = s.PrepareDataMapFromRepository(s.gitAPI, proj)
 	if err != nil {
-		log.Print("Error occured while retriving content of the Git repository. Will not create any ConfigMap")
+		log.Print("Error occurred while retriving content of the Git repository. Will not create any ConfigMap")
 		return prepareResponse(v1.Status_FAILED, "Failed to create ConfigMap"), err
 	}
 
