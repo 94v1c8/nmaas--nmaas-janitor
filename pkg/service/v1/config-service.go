@@ -111,7 +111,7 @@ func (s *configServiceServer) FindGitlabProjectId(api *gitlab.Client, uid string
 	}
 
 	//Find our project in group projects list
-    log.Printf("Found %d Projects and looking for %s", len(groups), uid)
+    log.Printf("Found %d Projects and looking for %s", len(projs), uid)
 	for _, proj := range projs {
 		if proj.Name == uid {
 			return proj.ID, nil
