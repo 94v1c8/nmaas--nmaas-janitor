@@ -106,12 +106,12 @@ func (s *configServiceServer) FindGitlabProjectId(api *gitlab.Client, uid string
 	log.Printf("Searching for GitLab Projects within Group %d / %s", groups[0].ID, groups[0].Name)
 	projs, _, err := api.Groups.ListGroupProjects(groups[0].ID, nil)
 	if err != nil || len(projs) == 0 {
-		log.Printf("Group %s is empty or unaccessible", groups[0].Name)
+		log.Printf("Group %s is empty or inaccessible", groups[0].Name)
 		return -1, status.Errorf(codes.NotFound, "Project containing config not found on Gitlab")
 	}
 
 	//Find our project in group projects list
-    log.Printf("Found %d Projects and looking for %s", len(projs), uid)
+    log.Printf("Found %d projects and looking for %s", len(projs), uid)
 	for _, proj := range projs {
 		if proj.Name == uid {
 			return proj.ID, nil
