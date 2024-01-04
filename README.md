@@ -3,7 +3,7 @@
     <img src="docs/nmaas-logo-blue.png" alt="Logo" width="206" height="48">
   </a>
 
-<h3 align="center">NMaaS Janitor (back-end)</h3>
+<h3 align="center">NMaaS Platform (Back-end)</h3>
 
 <h4 align="center">Open-source multi-tenant platform for effortless, orchestrated deployment of software tools and applications on top of Kubernetes</h4>
 
@@ -17,7 +17,7 @@
   </p>
 </div>
 
-## NNMaaS Janitor
+## NMaaS Janitor Component
 
 [NMaaS Janitor](https://github.com/nmaas-platform/nmaas-janitor) is a microservice that interacts with GitLab and Kubernetes API to perform various low level operations on behalf of the NMaaS Platform
 
@@ -28,6 +28,10 @@
 - Verifying deployment or statefulset status on demand
 - Setting basic auth parameters on Ingress resources on demand
 - Retrieving loadbalancer IP address assigned to given deployment or statefulset
+
+### NMaaS Janitor Development
+
+Explore the NMaaS Janitor [development and deployment](docs/DEVELOPMENT.md) documentation.
 
 ### Get in Touch
 
