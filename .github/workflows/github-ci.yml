@@ -16,10 +16,12 @@ jobs:
       - name: Set execute permissions for gradlew
         run: chmod +x ./gradlew
 
-      - name: Set up GO
+      - name: Set up Go
         uses: actions/setup-go@v4
         with:
           go-version: '^1.19'
+
+      - name: Verify Go version
         run: go version
 
       - name: Build with Gradle
