@@ -21,27 +21,13 @@
 
 [NMaaS Janitor](https://github.com/nmaas-platform/nmaas-janitor) is a microservice that interacts with GitLab and Kubernetes API to perform various low level operations on behalf of the NMaaS Platform
 
-### Technologies
-
-
-* [Go](https://go.dev/)
-* [Protobuf](https://protobuf.dev/)
-* [gRPC](https://grpc.io/)
-* [kubernetes/client-go](https://github.com/kubernetes/client-go)
-* [go-gitlab](https://pkg.go.dev/github.com/xanzy/go-gitlab)
-
 ### Features
 
-* Creating deployment ConfigMap(s) when configuration is pushed to GitLab repository
-* Updating deployment ConfigMap(s) on demand
-* Verifying deployment or statefulset status on demand
-* Setting basic auth parameters on Ingress resources on demand
-* Retrieving loadbalancer IP address assigned to given deployment or statefulset
-
-### Deploying
-
-The provided Dockerfile comprises a two-stage Docker image build.
-You don't have to compile protoc yourself, nor configure local golang environment. Just run `docker build`, and image will do all the work for you.
+- Creating deployment ConfigMap(s) when configuration is pushed to GitLab repository
+- Updating deployment ConfigMap(s) on demand
+- Verifying deployment or statefulset status on demand
+- Setting basic auth parameters on Ingress resources on demand
+- Retrieving loadbalancer IP address assigned to given deployment or statefulset
 
 ### Get in Touch
 
