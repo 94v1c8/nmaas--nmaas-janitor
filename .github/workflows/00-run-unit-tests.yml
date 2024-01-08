@@ -38,6 +38,6 @@ jobs:
 
       - name: Run tests
         run: |
-          mkdir -p /build/pkg/api/v1
-          /bin/protoc --proto_path=/build/api/proto/v1 --proto_path=/build/third_party --go_out=plugins=grpc:/build/pkg/api/v1 config-service.proto
+          mkdir -p pkg/api/v1
+          /bin/protoc --proto_path=api/proto/v1 --proto_path=third_party --go_out=plugins=grpc:pkg/api/v1 config-service.proto
           go test ./...
