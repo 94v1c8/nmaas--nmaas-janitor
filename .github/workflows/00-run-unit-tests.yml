@@ -37,4 +37,7 @@ jobs:
          go install github.com/golang/protobuf/protoc-gen-go
 
       - name: Run tests
-        run: go test ./...
+        run: |
+          mkdir -p /build/pkg/api/v1
+          /bin/protoc --proto_path=/build/api/proto/v1 --proto_path=/build/third_party --go_out=plugins=grpc:/build/pkg/api/v1 config-service.proto
+          go test ./...
