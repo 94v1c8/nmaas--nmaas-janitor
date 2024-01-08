@@ -1,8 +1,8 @@
-FROM golang:1.19.0-buster as builder
+FROM golang:1.21 as builder
 WORKDIR /
 RUN apt-get update && apt-get install unzip
-RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v3.20.3/protoc-3.20.3-linux-x86_64.zip
-RUN unzip protoc-3.20.3-linux-x86_64.zip -d /
+RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v25.1/protoc-25.1-linux-x86_64.zip
+RUN unzip protoc-25.1-linux-x86_64.zip -d /
 WORKDIR /build
 COPY api/ api
 COPY pkg/ pkg
