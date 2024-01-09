@@ -539,12 +539,12 @@ func (s *informationServiceServer) RetrieveServiceIp(ctx context.Context, req *v
 	}
 
 	if len(app.Status.LoadBalancer.Ingress) > 0 {
-		logLine(fmt.Sprintf("Found %d load balancer ingresse(s)", len(app.Status.LoadBalancer.Ingress))
+		logLine(fmt.Sprintf("Found %d load balancer ingresse(s)", len(app.Status.LoadBalancer.Ingress)))
 
 		ip := app.Status.LoadBalancer.Ingress[0].IP
 
 		if ip != "" {
-			logLine(fmt.Sprintf("Found IP address. Will return %s", ip)
+			logLine(fmt.Sprintf("Found IP address. Will return %s", ip))
 			return prepareInfoResponse(v1.Status_OK, "", ip), err
 		} else {
 			logLine("IP address not found")
