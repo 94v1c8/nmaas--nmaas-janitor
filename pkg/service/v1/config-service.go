@@ -66,7 +66,7 @@ func NewInformationServiceServer(kubeAPI kubernetes.Interface) v1.InformationSer
 	return &informationServiceServer{kubeAPI: kubeAPI}
 }
 
-func log(message string) {
+func logLine(message string) {
     log.Printf("%s : %s", time.Now(), message)
 }
 
@@ -484,7 +484,7 @@ func (s *readinessServiceServer) CheckIfReady(ctx context.Context, req *v1.Insta
 	}
 
 	depl := req.Deployment
-	log(fmt.Sprintf("> Check if deployment:%s ready in namespace:%s", depl.Uid, depl.Namespace))
+	logLine(fmt.Sprintf("> Check if deployment:%s ready in namespace:%s", depl.Uid, depl.Namespace))
 
 	//check if given k8s namespace exists
 	_, err := s.kubeAPI.CoreV1().Namespaces().Get(ctx, depl.Namespace, metav1.GetOptions{})
@@ -492,30 +492,30 @@ func (s *readinessServiceServer) CheckIfReady(ctx context.Context, req *v1.Insta
 		return prepareResponse(v1.Status_FAILED, namespaceNotFound), err
 	}
 
-	log("looking for deployment and checking its status")
+	logLine("looking for deployment and checking its status")
 	dep, err := s.kubeAPI.AppsV1().Deployments(depl.Namespace).Get(ctx, depl.Uid, metav1.GetOptions{})
 	if err != nil {
-		log("deployment not found, looking for statefulset and checking its status")
+		logLine("deployment not found, looking for statefulset and checking its status")
 		sts, err2 := s.kubeAPI.AppsV1().StatefulSets(depl.Namespace).Get(ctx, depl.Uid, metav1.GetOptions{})
 		if err2 != nil {
-			log("statefulset not found as well")
+			logLine("statefulset not found as well")
 			return prepareResponse(v1.Status_FAILED, "Neither Deployment nor StatefulSet found!"), err2
 		} else {
-			log("statefulset found, verifying status")
+			logLine("statefulset found, verifying status")
 			if *sts.Spec.Replicas == sts.Status.ReadyReplicas {
-		        log("ready")
+		        logLine("ready")
 				return prepareResponse(v1.Status_OK, "StatefulSet is ready"), nil
 			}
-			log("not yet ready")
+			logLine("not yet ready")
 			return prepareResponse(v1.Status_PENDING, "Waiting for statefulset"), nil
 		}
 	} else {
-		log("deployment found, verifying status")
+		logLine("deployment found, verifying status")
 		if *dep.Spec.Replicas == dep.Status.ReadyReplicas {
-		    log("ready")
+		    logLine("ready")
 			return prepareResponse(v1.Status_OK, "Deployment is ready"), nil
 		}
-		log("not yet ready")
+		logLine("not yet ready")
 		return prepareResponse(v1.Status_PENDING, "Waiting for deployment"), nil
 	}
 
