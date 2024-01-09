@@ -100,24 +100,24 @@ func prepareInfoResponse(status v1.Status, message string, info string) *v1.Info
 //Find proper project, given user namespace and instance uid
 func (s *configServiceServer) FindGitlabProjectId(api *gitlab.Client, uid string, domain string) (int, error) {
 	//Find exact group
-	log.Printf("Searching for GitLab Group by domain %s", domain)
+	logLine(fmt.Sprintf("Searching for GitLab Group by domain %s", domain))
 	groups, _, err := api.Groups.SearchGroup(domain)
 	if len(groups) != 1 || err != nil {
-		log.Printf("Found %d groups in domain %s", len(groups), domain)
+		logLine(fmt.Sprintf("Found %d groups in domain %s", len(groups), domain))
 		log.Print(err)
 		return -1, status.Errorf(codes.NotFound, "Gitlab Group for given domain does not exist")
 	}
 
 	//List group projects
-	log.Printf("Searching for GitLab Projects within Group %d / %s", groups[0].ID, groups[0].Name)
+	logLine(fmt.Sprintf("Searching for GitLab Projects within Group %d / %s", groups[0].ID, groups[0].Name))
 	projs, _, err := api.Groups.ListGroupProjects(groups[0].ID, nil)
 	if err != nil || len(projs) == 0 {
-		log.Printf("Group %s is empty or inaccessible", groups[0].Name)
+		logLine(fmt.Sprintf("Group %s is empty or inaccessible", groups[0].Name))
 		return -1, status.Errorf(codes.NotFound, "Project containing config not found on Gitlab")
 	}
 
 	//Find our project in group projects list
-    log.Printf("Found %d projects and looking for %s", len(projs), uid)
+    logLine(fmt.Sprintf("Found %d projects and looking for %s", len(projs), uid))
 	for _, proj := range projs {
 		if proj.Name == uid {
 			return proj.ID, nil
@@ -133,7 +133,7 @@ func (s *configServiceServer) PrepareDataMapFromRepository(api *gitlab.Client, r
 	var compiledMap = map[string]map[string]string{}
 
 	//Processing files in root directory
-	log.Print("Processing files in root directory")
+	logLine("Processing files in root directory")
 
 	rootTree, _, err := api.Repositories.ListTree(repoId, nil)
 	if err != nil {
@@ -148,7 +148,7 @@ func (s *configServiceServer) PrepareDataMapFromRepository(api *gitlab.Client, r
 		if file.Type != "blob" {
 			continue
 		}
-		log.Printf("Processing new file from repository (name: %s, path: %s)", file.Name, file.Path)
+		logLine(fmt.Sprintf("Processing new file from repository (name: %s, path: %s)", file.Name, file.Path))
 
 		opt := &gitlab.GetRawFileOptions{Ref: gitlab.String("master")}
 		fileContent, _, err := api.RepositoryFiles.GetRawFile(repoId, file.Path, opt)
@@ -172,7 +172,7 @@ func (s *configServiceServer) PrepareDataMapFromRepository(api *gitlab.Client, r
 
 		if directory.Type == "tree" {
 
-			log.Printf("Processing new directory from repository (name: %s, path: %s)", directory.Name, directory.Path)
+			logLine(fmt.Sprintf("Processing new directory from repository (name: %s, path: %s)", directory.Name, directory.Path))
 
 			opt := &gitlab.ListTreeOptions{Path: gitlab.String(directory.Path), Recursive: gitlab.Bool(true)}
 			dirTree, _, err := api.Repositories.ListTree(repoId, opt)
@@ -189,7 +189,7 @@ func (s *configServiceServer) PrepareDataMapFromRepository(api *gitlab.Client, r
 					continue
 				}
 
-				log.Printf("Processing new file from repository (name: %s, path: %s)", file.Name, file.Path)
+				logLine(fmt.Sprintf("Processing new file from repository (name: %s, path: %s)", file.Name, file.Path))
 
 				opt := &gitlab.GetRawFileOptions{Ref: gitlab.String("master")}
 				fileContent, _, err := api.RepositoryFiles.GetRawFile(repoId, file.Path, opt)
@@ -238,7 +238,7 @@ func (s *configServiceServer) CreateOrReplace(ctx context.Context, req *v1.Insta
 
 	repo, err = s.PrepareDataMapFromRepository(s.gitAPI, proj)
 	if err != nil {
-		log.Print("Error occurred while retriving content of the Git repository. Will not create any ConfigMap")
+		logLine("Error occurred while retrieving content of the Git repository. Will not create any ConfigMap")
 		return prepareResponse(v1.Status_FAILED, "Failed to create ConfigMap"), err
 	}
 
@@ -300,10 +300,10 @@ func (s *configServiceServer) DeleteIfExists(ctx context.Context, req *v1.Instan
 		//check if configmap belongs to instance
 		if configmap.Name == depl.Uid || strings.Contains(configmap.Name, depl.Uid + "-") {
 			//delete configmap
-			log.Printf("Deleting ConfigMap named %s", configmap.Name)
+			logLine(fmt.Sprintf("Deleting ConfigMap named %s", configmap.Name))
 			err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Delete(ctx, configmap.Name, metav1.DeleteOptions{})
 			if err != nil {
-				log.Printf("Error occurred while deleting ConfigMap %s", configmap.Name)
+				logLine(fmt.Sprintf("Error occurred while deleting ConfigMap %s", configmap.Name))
 			}
 		}
 	}
@@ -321,11 +321,9 @@ func randomString(l int) string {
 
 func aprHashCredentials(user string, password string) (string, error) {
 	out, err := apr1.Hash(password, randomString(8))
-
 	if err != nil {
 		return "", status.Errorf(codes.Internal, "Failed to execute apr hashing")
 	}
-
 	return user + ":" + out, nil
 }
 
@@ -410,7 +408,6 @@ func (s *basicAuthServiceServer) CreateOrReplace(ctx context.Context, req *v1.In
 		if err != nil {
 			return prepareResponse(v1.Status_FAILED, "Error while patching secret!"), err
 		}
-
 		return prepareResponse(v1.Status_OK, "Secret updated successfully"), nil
 	}
 }
@@ -434,7 +431,7 @@ func (s *basicAuthServiceServer) DeleteIfExists(ctx context.Context, req *v1.Ins
 	//check if secret exist
 	_, err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Get(ctx, secretName, metav1.GetOptions{})
 	if err != nil {
-		return prepareResponse(v1.Status_OK,"Secret does not exist"), nil
+		return prepareResponse(v1.Status_OK, "Secret does not exist"), nil
 	}
 
 	//delete secret
@@ -442,7 +439,6 @@ func (s *basicAuthServiceServer) DeleteIfExists(ctx context.Context, req *v1.Ins
 	if err != nil {
 		return prepareResponse(v1.Status_FAILED, "Error while removing secret!"), err
 	}
-
 	return prepareResponse(v1.Status_OK, "Secret deleted successfully"), nil
 }
 
@@ -465,7 +461,7 @@ func (s *certManagerServiceServer) DeleteIfExists(ctx context.Context, req *v1.I
 	//check if secret exist
 	_, err = s.kubeAPI.CoreV1().Secrets(depl.Namespace).Get(ctx, secretName, metav1.GetOptions{})
 	if err != nil {
-		return prepareResponse(v1.Status_OK,"Secret does not exist"), nil
+		return prepareResponse(v1.Status_OK, "Secret does not exist"), nil
 	}
 
 	//delete secret
@@ -473,7 +469,6 @@ func (s *certManagerServiceServer) DeleteIfExists(ctx context.Context, req *v1.I
 	if err != nil {
 		return prepareResponse(v1.Status_FAILED, "Error while removing secret!"), err
 	}
-
 	return prepareResponse(v1.Status_OK, "Secret deleted successfully"), nil
 }
 
@@ -529,7 +524,7 @@ func (s *informationServiceServer) RetrieveServiceIp(ctx context.Context, req *v
 	}
 
 	depl := req.Deployment
-	log.Printf("> Retrieving IP for service:%s in namespace:%s", depl.Uid, depl.Namespace)
+	logLine(fmt.Sprintf("> Retrieving IP for service:%s in namespace:%s", depl.Uid, depl.Namespace))
 
 	//check if given k8s namespace exists
 	_, err := s.kubeAPI.CoreV1().Namespaces().Get(ctx, depl.Namespace, metav1.GetOptions{})
@@ -539,33 +534,32 @@ func (s *informationServiceServer) RetrieveServiceIp(ctx context.Context, req *v
 
 	app, err := s.kubeAPI.CoreV1().Services(depl.Namespace).Get(ctx, depl.Uid, metav1.GetOptions{})
 	if err != nil {
-	    log.Printf("Service not found")
+	    logLine("Service not found")
 		return prepareInfoResponse(v1.Status_FAILED, "Service not found!", ""), err
 	}
 
 	if len(app.Status.LoadBalancer.Ingress) > 0 {
-		log.Printf("Found %d loadbalancer ingresse(s)", len(app.Status.LoadBalancer.Ingress))
+		logLine("Found %d load balancer ingresse(s)", len(app.Status.LoadBalancer.Ingress))
 
 		ip := app.Status.LoadBalancer.Ingress[0].IP
 
 		if ip != "" {
-			log.Printf("Found IP address. Will return %s", ip)
+			logLine("Found IP address. Will return %s", ip)
 			return prepareInfoResponse(v1.Status_OK, "", ip), err
 		} else {
-			log.Printf("IP adress not found")
+			logLine("IP address not found")
 			return prepareInfoResponse(v1.Status_FAILED, "Ip not found!", ""), err
 		}
 
 	} else {
-		log.Printf("No loadbalancer ingresses found")
+		logLine("No load balancer ingresses found")
 		return prepareInfoResponse(v1.Status_FAILED, "Service ingress not found!", ""), err
 	}
-
 }
 
 func (s *informationServiceServer) CheckServiceExists(ctx context.Context, req *v1.InstanceRequest) (*v1.InfoServiceResponse, error) {
 
-	log.Printf("Entered CheckServiceExists method")
+	logLine("Entered CheckServiceExists method")
 
 	// check if the API version requested by client is supported by server
 	if err := checkAPI(req.Api, apiVersion); err != nil {
@@ -580,13 +574,11 @@ func (s *informationServiceServer) CheckServiceExists(ctx context.Context, req *
 		return prepareInfoResponse(v1.Status_FAILED, namespaceNotFound, ""), err
 	}
 
-	log.Printf("About to read service %s details from namespace %s", depl.Uid, depl.Namespace)
+	logLine(fmt.Sprintf("About to read service %s details from namespace %s", depl.Uid, depl.Namespace))
 
 	ser, err := s.kubeAPI.CoreV1().Services(depl.Namespace).Get(ctx, depl.Uid, metav1.GetOptions{})
 	if err != nil {
 		return prepareInfoResponse(v1.Status_FAILED, "Service not found!", ""), err
 	}
-	
 	return prepareInfoResponse(v1.Status_OK, "", ser.Name), err
-
 }
