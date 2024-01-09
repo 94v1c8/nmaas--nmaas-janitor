@@ -13,6 +13,8 @@ import (
 	"log"
 	"math/rand"
 	"strings"
+	"time"
+	"fmt"
 
 	v1 "bitbucket.software.geant.org/projects/NMAAS/repos/nmaas-janitor/pkg/api/v1"
 	"github.com/johnaoss/htpasswd/apr1"
@@ -62,6 +64,10 @@ func NewReadinessServiceServer(kubeAPI kubernetes.Interface) v1.ReadinessService
 
 func NewInformationServiceServer(kubeAPI kubernetes.Interface) v1.InformationServiceServer {
 	return &informationServiceServer{kubeAPI: kubeAPI}
+}
+
+func log(message string) {
+    log.Printf("%s : %s", time.Now(), message)
 }
 
 func checkAPI(api string, current string) error {
@@ -297,7 +303,7 @@ func (s *configServiceServer) DeleteIfExists(ctx context.Context, req *v1.Instan
 			log.Printf("Deleting ConfigMap named %s", configmap.Name)
 			err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Delete(ctx, configmap.Name, metav1.DeleteOptions{})
 			if err != nil {
-				log.Printf("Error occured while deleting ConfigMap %s", configmap.Name)
+				log.Printf("Error occurred while deleting ConfigMap %s", configmap.Name)
 			}
 		}
 	}
@@ -478,6 +484,7 @@ func (s *readinessServiceServer) CheckIfReady(ctx context.Context, req *v1.Insta
 	}
 
 	depl := req.Deployment
+	log(fmt.Sprintf("> Check if deployment:%s ready in namespace:%s", depl.Uid, depl.Namespace))
 
 	//check if given k8s namespace exists
 	_, err := s.kubeAPI.CoreV1().Namespaces().Get(ctx, depl.Namespace, metav1.GetOptions{})
@@ -485,26 +492,30 @@ func (s *readinessServiceServer) CheckIfReady(ctx context.Context, req *v1.Insta
 		return prepareResponse(v1.Status_FAILED, namespaceNotFound), err
 	}
 
-	log.Print("looking for deployment and checking its status")
+	log("looking for deployment and checking its status")
 	dep, err := s.kubeAPI.AppsV1().Deployments(depl.Namespace).Get(ctx, depl.Uid, metav1.GetOptions{})
 	if err != nil {
-		log.Print("deployment not found, looking for statefulset and checking its status")
+		log("deployment not found, looking for statefulset and checking its status")
 		sts, err2 := s.kubeAPI.AppsV1().StatefulSets(depl.Namespace).Get(ctx, depl.Uid, metav1.GetOptions{})
 		if err2 != nil {
-			log.Print("statefulset not found as well")
+			log("statefulset not found as well")
 			return prepareResponse(v1.Status_FAILED, "Neither Deployment nor StatefulSet found!"), err2
 		} else {
-			log.Print("statefulset found, verifying status")
+			log("statefulset found, verifying status")
 			if *sts.Spec.Replicas == sts.Status.ReadyReplicas {
+		        log("ready")
 				return prepareResponse(v1.Status_OK, "StatefulSet is ready"), nil
 			}
+			log("not yet ready")
 			return prepareResponse(v1.Status_PENDING, "Waiting for statefulset"), nil
 		}
 	} else {
-		log.Print("deployment found, verifying status")
+		log("deployment found, verifying status")
 		if *dep.Spec.Replicas == dep.Status.ReadyReplicas {
+		    log("ready")
 			return prepareResponse(v1.Status_OK, "Deployment is ready"), nil
 		}
+		log("not yet ready")
 		return prepareResponse(v1.Status_PENDING, "Waiting for deployment"), nil
 	}
 
@@ -512,14 +523,13 @@ func (s *readinessServiceServer) CheckIfReady(ctx context.Context, req *v1.Insta
 
 func (s *informationServiceServer) RetrieveServiceIp(ctx context.Context, req *v1.InstanceRequest) (*v1.InfoServiceResponse, error) {
 
-	log.Printf("Entered RetrieveServiceIp method")
-
 	// check if the API version requested by client is supported by server
 	if err := checkAPI(req.Api, apiVersion); err != nil {
 		return nil, err
 	}
 
 	depl := req.Deployment
+	log.Printf("> Retrieving IP for service:%s in namespace:%s", depl.Uid, depl.Namespace)
 
 	//check if given k8s namespace exists
 	_, err := s.kubeAPI.CoreV1().Namespaces().Get(ctx, depl.Namespace, metav1.GetOptions{})
@@ -527,10 +537,9 @@ func (s *informationServiceServer) RetrieveServiceIp(ctx context.Context, req *v
 		return prepareInfoResponse(v1.Status_FAILED, namespaceNotFound, ""), err
 	}
 
-	log.Printf("About to read service %s details from namespace %s", depl.Uid, depl.Namespace)
-
 	app, err := s.kubeAPI.CoreV1().Services(depl.Namespace).Get(ctx, depl.Uid, metav1.GetOptions{})
 	if err != nil {
+	    log.Printf("Service not found")
 		return prepareInfoResponse(v1.Status_FAILED, "Service not found!", ""), err
 	}
 
