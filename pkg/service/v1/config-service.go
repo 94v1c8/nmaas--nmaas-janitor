@@ -67,7 +67,7 @@ func NewInformationServiceServer(kubeAPI kubernetes.Interface) v1.InformationSer
 }
 
 func logLine(message string) {
-    log.Printf("%s : %s", time.Now(), message)
+    log.Printf("%s : %s", time.Now().Format(time.RFC3339), message)
 }
 
 func checkAPI(api string, current string) error {
