@@ -67,7 +67,7 @@ func NewInformationServiceServer(kubeAPI kubernetes.Interface) v1.InformationSer
 }
 
 func logLine(message string) {
-    log.Printf("%s : %s", time.Now().Format(time.RFC3339), message)
+    log.Printf(time.Now().Format(time.RFC3339) + " : " + message)
 }
 
 func checkAPI(api string, current string) error {
@@ -80,7 +80,7 @@ func checkAPI(api string, current string) error {
 
 //Prepare response
 func prepareResponse(status v1.Status, message string) *v1.ServiceResponse {
-	return &v1.ServiceResponse{
+	return &v1.ServiceResponse {
 		Api: apiVersion,
 		Status: status,
 		Message: message,
@@ -89,7 +89,7 @@ func prepareResponse(status v1.Status, message string) *v1.ServiceResponse {
 
 //Prepare info response
 func prepareInfoResponse(status v1.Status, message string, info string) *v1.InfoServiceResponse {
-	return &v1.InfoServiceResponse{
+	return &v1.InfoServiceResponse {
 		Api: apiVersion,
 		Status: status,
 		Message: message,
