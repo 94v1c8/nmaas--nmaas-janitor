@@ -645,7 +645,7 @@ func (s *podServiceServer) RetrievePodList(ctx context.Context, req *v1.Instance
 	    }
 	}
 
-    logLine(fmt.Sprintf("< Found %s matching pods", len(matchingPods)))
+    logLine(fmt.Sprintf("< Found %d matching pods", len(matchingPods)))
 	return preparePodListResponse(v1.Status_OK, "", matchingPods), err
 }
 
@@ -682,5 +682,6 @@ func (s *podServiceServer) RetrievePodLogs(ctx context.Context, req *v1.PodReque
 	}
     logs := logBuffer.String()
 
+    logLine(fmt.Sprintf("< Returning %d characters", len(logs)))
 	return preparePodLogsResponse(v1.Status_OK, "", []string{logs}), err
 }
