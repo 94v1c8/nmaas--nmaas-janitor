@@ -14,6 +14,8 @@ import (
 	"math/rand"
 	"strings"
 	"fmt"
+	"bytes"
+	"io"
 
 	v1 "bitbucket.software.geant.org/projects/NMAAS/repos/nmaas-janitor/pkg/api/v1"
 	"github.com/johnaoss/htpasswd/apr1"
@@ -624,7 +626,27 @@ func (s *podServiceServer) RetrievePodList(ctx context.Context, req *v1.Instance
 	if err != nil {
 		return preparePodListResponse(v1.Status_FAILED, namespaceNotFound, nil), err
 	}
-	return preparePodListResponse(v1.Status_OK, "", nil), err
+
+    //collecting all pods from given namespace
+	logLine(fmt.Sprintf("Collecting pods from namespace %s", depl.Namespace))
+	allPods, err := s.kubeAPI.CoreV1().Pods(depl.Namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return preparePodListResponse(v1.Status_FAILED, "Issue with collecting pods", nil), err
+	}
+
+	matchingPods := make([]*v1.PodInfo, 0)
+
+    //filtering only those pods that match the deployment name
+ 	logLine(fmt.Sprintf("Filtering pods by deployment %s", depl.Uid))
+	for _, pod := range allPods.Items {
+	    if (strings.HasPrefix(pod.Name, depl.Uid + "-")) {
+	        newPod := &v1.PodInfo{Name: pod.Name, DisplayName: pod.Name,}
+	        matchingPods = append(matchingPods, newPod)
+	    }
+	}
+
+    logLine(fmt.Sprintf("< Found %s matching pods", len(matchingPods)))
+	return preparePodListResponse(v1.Status_OK, "", matchingPods), err
 }
 
 func (s *podServiceServer) RetrievePodLogs(ctx context.Context, req *v1.PodRequest) (*v1.PodLogsResponse, error) {
@@ -634,12 +656,31 @@ func (s *podServiceServer) RetrievePodLogs(ctx context.Context, req *v1.PodReque
         return nil, err
     }
 
-	depl := req.Deployment
+    depl := req.Deployment
+	pod := req.Pod
 
 	//check if given k8s namespace exists
 	_, err := s.kubeAPI.CoreV1().Namespaces().Get(ctx, depl.Namespace, metav1.GetOptions{})
 	if err != nil {
 		return preparePodLogsResponse(v1.Status_FAILED, namespaceNotFound, nil), err
 	}
-	return preparePodLogsResponse(v1.Status_OK, "", nil), err
+
+    //collecting logs from given pod
+	logLine(fmt.Sprintf("Collecting logs from pod %s in namespace %s", pod.Name, depl.Namespace))
+	logsRequest := s.kubeAPI.CoreV1().Pods(depl.Namespace).GetLogs(pod.Name, &apiv1.PodLogOptions{})
+
+    podLogs, err := logsRequest.Stream(ctx)
+	if err != nil {
+		return preparePodLogsResponse(v1.Status_FAILED, "Issue with opening stream with logs", nil), err
+	}
+    defer podLogs.Close()
+
+    logBuffer := new(bytes.Buffer)
+    _, err = io.Copy(logBuffer, podLogs)
+	if err != nil {
+		return preparePodLogsResponse(v1.Status_FAILED, "Issue with copying data from stream to string", nil), err
+	}
+    logs := logBuffer.String()
+
+	return preparePodLogsResponse(v1.Status_OK, "", []string{logs}), err
 }
