@@ -13,7 +13,6 @@ import (
 	"log"
 	"math/rand"
 	"strings"
-	"time"
 	"fmt"
 
 	v1 "bitbucket.software.geant.org/projects/NMAAS/repos/nmaas-janitor/pkg/api/v1"
