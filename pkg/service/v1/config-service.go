@@ -14,6 +14,8 @@ import (
 	"math/rand"
 	"strings"
 	"fmt"
+	"bytes"
+	"io"
 
 	v1 "bitbucket.software.geant.org/projects/NMAAS/repos/nmaas-janitor/pkg/api/v1"
 	"github.com/johnaoss/htpasswd/apr1"
@@ -45,6 +47,10 @@ type informationServiceServer struct {
 	kubeAPI kubernetes.Interface
 }
 
+type podServiceServer struct {
+	kubeAPI kubernetes.Interface
+}
+
 func NewConfigServiceServer(kubeAPI kubernetes.Interface, gitAPI *gitlab.Client) v1.ConfigServiceServer {
 	return &configServiceServer{kubeAPI: kubeAPI, gitAPI: gitAPI}
 }
@@ -63,6 +69,10 @@ func NewReadinessServiceServer(kubeAPI kubernetes.Interface) v1.ReadinessService
 
 func NewInformationServiceServer(kubeAPI kubernetes.Interface) v1.InformationServiceServer {
 	return &informationServiceServer{kubeAPI: kubeAPI}
+}
+
+func NewPodServiceServer(kubeAPI kubernetes.Interface) v1.PodServiceServer {
+	return &podServiceServer{kubeAPI: kubeAPI}
 }
 
 func logLine(message string) {
@@ -93,6 +103,26 @@ func prepareInfoResponse(status v1.Status, message string, info string) *v1.Info
 		Status: status,
 		Message: message,
 		Info: info,
+	}
+}
+
+//Prepare pod list response
+func preparePodListResponse(status v1.Status, message string, pods []*v1.PodInfo) *v1.PodListResponse {
+	return &v1.PodListResponse {
+		Api: apiVersion,
+		Status: status,
+		Message: message,
+		Pods: pods,
+	}
+}
+
+//Prepare pod logs response
+func preparePodLogsResponse(status v1.Status, message string, lines []string) *v1.PodLogsResponse {
+	return &v1.PodLogsResponse {
+		Api: apiVersion,
+		Status: status,
+		Message: message,
+		Lines: lines,
 	}
 }
 
@@ -558,7 +588,7 @@ func (s *informationServiceServer) RetrieveServiceIp(ctx context.Context, req *v
 
 func (s *informationServiceServer) CheckServiceExists(ctx context.Context, req *v1.InstanceRequest) (*v1.InfoServiceResponse, error) {
 
-	logLine("Entered CheckServiceExists method")
+	logLine("> Entered CheckServiceExists method")
 
 	// check if the API version requested by client is supported by server
 	if err := checkAPI(req.Api, apiVersion); err != nil {
@@ -580,4 +610,84 @@ func (s *informationServiceServer) CheckServiceExists(ctx context.Context, req *
 		return prepareInfoResponse(v1.Status_FAILED, "Service not found!", ""), err
 	}
 	return prepareInfoResponse(v1.Status_OK, "", ser.Name), err
+}
+
+func (s *podServiceServer) RetrievePodList(ctx context.Context, req *v1.InstanceRequest) (*v1.PodListResponse, error) {
+    logLine("> Entered RetrievePodList method")
+    // check if the API version requested by client is supported by server
+    if err := checkAPI(req.Api, apiVersion); err != nil {
+        return nil, err
+    }
+
+	depl := req.Deployment
+
+	//check if given k8s namespace exists
+	_, err := s.kubeAPI.CoreV1().Namespaces().Get(ctx, depl.Namespace, metav1.GetOptions{})
+	if err != nil {
+		return preparePodListResponse(v1.Status_FAILED, namespaceNotFound, nil), err
+	}
+
+    //collecting all pods from given namespace
+	logLine(fmt.Sprintf("Collecting pods from namespace %s", depl.Namespace))
+	allPods, err := s.kubeAPI.CoreV1().Pods(depl.Namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return preparePodListResponse(v1.Status_FAILED, "Issue with collecting pods", nil), err
+	}
+
+	matchingPods := make([]*v1.PodInfo, 0)
+
+    //filtering only those pods that match the deployment name
+ 	logLine(fmt.Sprintf("Filtering pods by deployment %s", depl.Uid))
+	for _, pod := range allPods.Items {
+	    if (strings.HasPrefix(pod.Name, depl.Uid + "-")) {
+	        newPod := &v1.PodInfo{Name: pod.Name, DisplayName: pod.Name,}
+	        matchingPods = append(matchingPods, newPod)
+	    }
+	}
+
+    logLine(fmt.Sprintf("< Found %d matching pods", len(matchingPods)))
+	return preparePodListResponse(v1.Status_OK, "", matchingPods), err
+}
+
+func (s *podServiceServer) RetrievePodLogs(ctx context.Context, req *v1.PodRequest) (*v1.PodLogsResponse, error) {
+    logLine("> Entered RetrievePodLogs method")
+    // check if the API version requested by client is supported by server
+    if err := checkAPI(req.Api, apiVersion); err != nil {
+        return nil, err
+    }
+
+    depl := req.Deployment
+	pod := req.Pod
+
+	//check if given k8s namespace exists
+	_, err := s.kubeAPI.CoreV1().Namespaces().Get(ctx, depl.Namespace, metav1.GetOptions{})
+	if err != nil {
+		return preparePodLogsResponse(v1.Status_FAILED, namespaceNotFound, nil), err
+	}
+
+    //check if given pod exists
+    _, err = s.kubeAPI.CoreV1().Pods(depl.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
+    if err != nil {
+        return preparePodLogsResponse(v1.Status_FAILED, "Pod not found", nil), err
+    }
+
+    //collecting logs from given pod
+	logLine(fmt.Sprintf("Collecting logs from pod %s in namespace %s", pod.Name, depl.Namespace))
+	logsRequest := s.kubeAPI.CoreV1().Pods(depl.Namespace).GetLogs(pod.Name, &apiv1.PodLogOptions{})
+
+    podLogs, err := logsRequest.Stream(ctx)
+	if err != nil {
+		return preparePodLogsResponse(v1.Status_FAILED, "Issue with opening stream with logs", nil), err
+	}
+    defer podLogs.Close()
+
+    logBuffer := new(bytes.Buffer)
+    _, err = io.Copy(logBuffer, podLogs)
+	if err != nil {
+		return preparePodLogsResponse(v1.Status_FAILED, "Issue with copying data from stream to string", nil), err
+	}
+    logs := logBuffer.String()
+
+    logLine(fmt.Sprintf("< Returning %d characters", len(logs)))
+	return preparePodLogsResponse(v1.Status_OK, "", []string{logs}), err
 }
