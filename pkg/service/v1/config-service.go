@@ -665,6 +665,12 @@ func (s *podServiceServer) RetrievePodLogs(ctx context.Context, req *v1.PodReque
 		return preparePodLogsResponse(v1.Status_FAILED, namespaceNotFound, nil), err
 	}
 
+    //check if given pod exists
+    _, err = s.kubeAPI.CoreV1().Pods(depl.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
+    if err != nil {
+        return preparePodLogsResponse(v1.Status_FAILED, "Pod not found", nil), err
+    }
+
     //collecting logs from given pod
 	logLine(fmt.Sprintf("Collecting logs from pod %s in namespace %s", pod.Name, depl.Namespace))
 	logsRequest := s.kubeAPI.CoreV1().Pods(depl.Namespace).GetLogs(pod.Name, &apiv1.PodLogOptions{})

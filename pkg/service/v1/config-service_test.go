@@ -9,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 	testclient "k8s.io/client-go/kubernetes/fake"
+	"fmt"
 )
 
 func TestCheckAPI(t *testing.T) {
@@ -378,6 +379,89 @@ func TestConfigServiceServer_DeleteIfExists(t *testing.T) {
 	//should pass on deleting existing configmap
 	res, err = server.DeleteIfExists(context.Background(), &req)
 	if err != nil || res.Status != v1.Status_OK {
+		t.Fail()
+	}
+}
+
+func TestPodServiceServer_RetrievePodList(t *testing.T) {
+	client := testclient.NewSimpleClientset()
+	server := NewPodServiceServer(client)
+
+	//Fail on API version check
+	res, err := server.RetrievePodList(context.Background(), &illegal_req)
+	if err == nil || res != nil {
+		t.Fail()
+	}
+
+	//Fail on namespace check
+	freq := v1.InstanceRequest{Api:apiVersion, Deployment:&fake_ns_inst}
+	res, err = server.RetrievePodList(context.Background(), &freq)
+	if err == nil || res.Status != v1.Status_FAILED {
+		t.Fail()
+	}
+
+	//create mock namespace
+	ns := corev1.Namespace{}
+	ns.Name = "test-namespace"
+	_, _ = client.CoreV1().Namespaces().Create(context.Background(), &ns, metav1.CreateOptions{})
+
+	//Pass
+	res, err = server.RetrievePodList(context.Background(), &req)
+	if res.Status != v1.Status_OK || len(res.Pods) != 0 {
+		t.Fail()
+	}
+
+	//create mock pods (2 out of 3 should match the deployment name)
+	p1 := corev1.Pod{}
+	p1.Name = "test-uid-pod"
+	_, _ = client.CoreV1().Pods("test-namespace").Create(context.Background(), &p1, metav1.CreateOptions{})
+	p2 := corev1.Pod{}
+	p2.Name = "test-uid-pod2"
+	_, _ = client.CoreV1().Pods("test-namespace").Create(context.Background(), &p2, metav1.CreateOptions{})
+    p3 := corev1.Pod{}
+    p3.Name = "test-uid2-pod1"
+    _, _ = client.CoreV1().Pods("test-namespace").Create(context.Background(), &p3, metav1.CreateOptions{})
+
+	//Pass
+	res, err = server.RetrievePodList(context.Background(), &req)
+	if res.Status != v1.Status_OK || len(res.Pods) != 2 || res.Pods[0].Name != "test-uid-pod" {
+		t.Fail()
+	}
+}
+
+func TestPodServiceServer_RetrievePodLogs(t *testing.T) {
+	client := testclient.NewSimpleClientset()
+	server := NewPodServiceServer(client)
+
+	//Fail on namespace check
+	fPodReq := v1.PodRequest{Api:apiVersion, Pod:nil, Deployment:&fake_ns_inst}
+	res, err := server.RetrievePodLogs(context.Background(), &fPodReq)
+	if err == nil || res.Status != v1.Status_FAILED {
+		t.Fail()
+	}
+
+	//create mock namespace
+	ns := corev1.Namespace{}
+	ns.Name = "test-namespace"
+	_, _ = client.CoreV1().Namespaces().Create(context.Background(), &ns, metav1.CreateOptions{})
+
+	//Pass
+	pod := v1.PodInfo{Name: "test-uid-pod"}
+	podReq := v1.PodRequest{Api:apiVersion, Pod:&pod, Deployment:&inst}
+	res, err = server.RetrievePodLogs(context.Background(), &podReq)
+	if err == nil || res.Status != v1.Status_FAILED {
+		t.Fail()
+	}
+
+	//create mock pod
+	p1 := corev1.Pod{}
+	p1.Name = "test-uid-pod"
+	_, _ = client.CoreV1().Pods("test-namespace").Create(context.Background(), &p1, metav1.CreateOptions{})
+
+	//Pass
+	res, err = server.RetrievePodLogs(context.Background(), &podReq)
+    fmt.Printf("Total lines: %d. First line: %s", len(res.Lines), res.Lines[0])
+	if err != nil || res.Status != v1.Status_OK || len(res.Lines) != 1 {
 		t.Fail()
 	}
 }
