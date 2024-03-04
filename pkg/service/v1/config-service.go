@@ -640,7 +640,10 @@ func (s *podServiceServer) RetrievePodList(ctx context.Context, req *v1.Instance
  	logLine(fmt.Sprintf("Filtering pods by deployment %s", depl.Uid))
 	for _, pod := range allPods.Items {
 	    if (strings.HasPrefix(pod.Name, depl.Uid + "-")) {
-	        newPod := &v1.PodInfo{Name: pod.Name, DisplayName: pod.Name,}
+	        newPod := &v1.PodInfo{Name: pod.Name, DisplayName: pod.Name, Containers: make([]string, 0)}
+	        for container := range pod.Spec.Containers {
+                newPod.Containers = append(newPod.Containers, pod.Spec.Containers[container].Name)
+            }
 	        matchingPods = append(matchingPods, newPod)
 	    }
 	}
@@ -672,8 +675,15 @@ func (s *podServiceServer) RetrievePodLogs(ctx context.Context, req *v1.PodReque
     }
 
     //collecting logs from given pod
-	logLine(fmt.Sprintf("Collecting logs from pod %s in namespace %s", pod.Name, depl.Namespace))
-	logsRequest := s.kubeAPI.CoreV1().Pods(depl.Namespace).GetLogs(pod.Name, &apiv1.PodLogOptions{})
+    var opts apiv1.PodLogOptions
+    if len(pod.Containers) == 0 {
+        opts = apiv1.PodLogOptions{}
+    } else {
+        opts = apiv1.PodLogOptions{Container: pod.Containers[0]}
+    }
+	logLine(fmt.Sprintf("Collecting logs from pod/container %s/%s in namespace %s", pod.Name, opts.Container, depl.Namespace))
+
+	logsRequest := s.kubeAPI.CoreV1().Pods(depl.Namespace).GetLogs(pod.Name, &opts)
 
     podLogs, err := logsRequest.Stream(ctx)
 	if err != nil {
