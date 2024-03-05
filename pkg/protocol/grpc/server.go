@@ -18,6 +18,7 @@ func RunServer(ctx context.Context,
                readyAPI v1.ReadinessServiceServer,
                infoAPI v1.InformationServiceServer,
                podAPI v1.PodServiceServer,
+               namespaceAPI v1.NamespaceServiceServer,
                port string) error {
 	listen, err := net.Listen("tcp", ":"+port)
 	if err != nil {
@@ -32,6 +33,7 @@ func RunServer(ctx context.Context,
 	v1.RegisterReadinessServiceServer(server, readyAPI)
 	v1.RegisterInformationServiceServer(server, infoAPI)
 	v1.RegisterPodServiceServer(server, podAPI)
+	v1.RegisterNamespaceServiceServer(server, namespaceAPI)
 
 	// graceful shutdown
 	c := make(chan os.Signal, 1)

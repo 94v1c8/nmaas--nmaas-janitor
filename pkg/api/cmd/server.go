@@ -60,7 +60,8 @@ func RunServer() error {
 	readyAPI := v1.NewReadinessServiceServer(kubeAPI)
 	infoAPI := v1.NewInformationServiceServer(kubeAPI)
 	podAPI := v1.NewPodServiceServer(kubeAPI)
+	namespaceAPI := v1.NewNamespaceServiceServer(kubeAPI)
 
-	return grpc.RunServer(ctx, confAPI, authAPI, certAPI, readyAPI, infoAPI, podAPI, cfg.GRPCPort)
+	return grpc.RunServer(ctx, confAPI, authAPI, certAPI, readyAPI, infoAPI, podAPI, namespaceAPI, cfg.GRPCPort)
 }
 
