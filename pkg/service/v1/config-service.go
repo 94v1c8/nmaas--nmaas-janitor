@@ -51,6 +51,10 @@ type podServiceServer struct {
 	kubeAPI kubernetes.Interface
 }
 
+type namespaceServiceServer struct {
+	kubeAPI kubernetes.Interface
+}
+
 func NewConfigServiceServer(kubeAPI kubernetes.Interface, gitAPI *gitlab.Client) v1.ConfigServiceServer {
 	return &configServiceServer{kubeAPI: kubeAPI, gitAPI: gitAPI}
 }
@@ -73,6 +77,10 @@ func NewInformationServiceServer(kubeAPI kubernetes.Interface) v1.InformationSer
 
 func NewPodServiceServer(kubeAPI kubernetes.Interface) v1.PodServiceServer {
 	return &podServiceServer{kubeAPI: kubeAPI}
+}
+
+func NewNamespaceServiceServer(kubeAPI kubernetes.Interface) v1.NamespaceServiceServer {
+	return &namespaceServiceServer{kubeAPI: kubeAPI}
 }
 
 func logLine(message string) {
@@ -700,4 +708,27 @@ func (s *podServiceServer) RetrievePodLogs(ctx context.Context, req *v1.PodReque
 
     logLine(fmt.Sprintf("< Returning %d characters", len(logs)))
 	return preparePodLogsResponse(v1.Status_OK, "", []string{logs}), err
+}
+
+func (s *namespaceServiceServer) CreateNamespace(ctx context.Context, req *v1.NamespaceRequest) (*v1.ServiceResponse, error) {
+    logLine("> Entered CreateNamespace method")
+    // check if the API version requested by client is supported by server
+    if err := checkAPI(req.Api, apiVersion); err != nil {
+        return nil, err
+    }
+
+	ns := apiv1.Namespace{}
+	ns.Name = req.Namespace
+	annotations := make(map[string]string)
+    for _, a := range req.Annotations {
+        annotations[a.Key] = a.Value
+    }
+    ns.SetAnnotations(annotations)
+
+	_, err := s.kubeAPI.CoreV1().Namespaces().Create(ctx, &ns, metav1.CreateOptions{})
+	if err != nil {
+		return prepareResponse(v1.Status_FAILED, namespaceNotFound), err
+	}
+
+	return prepareResponse(v1.Status_OK, ""), nil
 }
