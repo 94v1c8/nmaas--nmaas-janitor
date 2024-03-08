@@ -465,3 +465,22 @@ func TestPodServiceServer_RetrievePodLogs(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestNamespaceServiceServer_CreateNamespace(t *testing.T) {
+    client := testclient.NewSimpleClientset()
+    server := NewNamespaceServiceServer(client)
+
+	//Fail on API version check
+	nsReq := v1.NamespaceRequest{Api:"invalid", Namespace:"ns1", Annotations:nil}
+	res, err := server.CreateNamespace(context.Background(), &nsReq)
+	if err == nil || res != nil {
+		t.Fail()
+	}
+
+	nsReq = v1.NamespaceRequest{Api:apiVersion, Namespace:"ns1", Annotations:nil}
+    //Pass
+    res, err = server.CreateNamespace(context.Background(), &nsReq)
+    if err != nil || res.Status != v1.Status_OK {
+        t.Fail()
+    }
+}

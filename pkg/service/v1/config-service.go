@@ -716,9 +716,15 @@ func (s *namespaceServiceServer) CreateNamespace(ctx context.Context, req *v1.Na
     if err := checkAPI(req.Api, apiVersion); err != nil {
         return nil, err
     }
+	logLine(fmt.Sprintf("Creating namespace %s with %d annotations", req.Namespace, len(req.Annotations)))
 
 	ns := apiv1.Namespace{}
 	ns.Name = req.Namespace
+
+	labels := make(map[string]string)
+	labels["name"] = req.Namespace
+	ns.SetLabels(labels)
+
 	annotations := make(map[string]string)
     for _, a := range req.Annotations {
         annotations[a.Key] = a.Value
