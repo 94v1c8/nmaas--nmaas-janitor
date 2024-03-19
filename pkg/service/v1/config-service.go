@@ -145,23 +145,13 @@ func (s *configServiceServer) FindGitlabProjectId(api *gitlab.Client, uid string
 		return -1, status.Errorf(codes.NotFound, "Gitlab Group for given domain does not exist")
 	}
 
-	//List group projects
-	logLine(fmt.Sprintf("Searching for GitLab Projects within Group %d / %s", groups[0].ID, groups[0].Name))
-	projs, _, err := api.Groups.ListGroupProjects(groups[0].ID, nil)
-	if err != nil || len(projs) == 0 {
-		logLine(fmt.Sprintf("Group %s is empty or inaccessible", groups[0].Name))
-		return -1, status.Errorf(codes.NotFound, "Project containing config not found on Gitlab")
-	}
+    project, _, err := api.Projects.GetProject(uid, &gitlab.GetProjectOptions{})
+    if err != nil {
+        log.Print(err)
+        return -1, status.Errorf(codes.NotFound, "Gitlab Project for given uid does not exist")
+    }
 
-	//Find our project in group projects list
-    logLine(fmt.Sprintf("Found %d projects and looking for %s", len(projs), uid))
-	for _, proj := range projs {
-		if proj.Name == uid {
-			return proj.ID, nil
-		}
-	}
-
-	return -1, status.Errorf(codes.NotFound, "Project containing config not found on Gitlab")
+    return project.ID, nil
 }
 
 //Parse repository files into string:string map for configmap creator
@@ -257,7 +247,7 @@ func (s *configServiceServer) CreateOrReplace(ctx context.Context, req *v1.Insta
 
 	proj, err := s.FindGitlabProjectId(s.gitAPI, depl.Uid, depl.Domain)
 	if err != nil {
-		return prepareResponse(v1.Status_FAILED, "Cannot find corresponding gitlab assets"), err
+		return prepareResponse(v1.Status_FAILED, "Cannot find corresponding GitLap project"), err
 	}
 
 	//check if given k8s namespace exists
@@ -294,22 +284,19 @@ func (s *configServiceServer) CreateOrReplace(ctx context.Context, req *v1.Insta
 		_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Get(ctx, cm.Name, metav1.GetOptions{})
 
 		if err != nil { //Not exists, we create new
-
 			_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Create(ctx, &cm, metav1.CreateOptions{})
 			if err != nil {
 				return prepareResponse(v1.Status_FAILED, "Failed to create ConfigMap"), err
 			}
-
 		} else { //Already exists, we update it
-
 			_, err = s.kubeAPI.CoreV1().ConfigMaps(depl.Namespace).Update(ctx, &cm, metav1.UpdateOptions{})
 			if err != nil {
-				return prepareResponse(v1.Status_FAILED, "Error while updating configmap!"), err
+				return prepareResponse(v1.Status_FAILED, "Error while updating existing ConfigMap!"), err
 			}
 		}
 	}
 
-	return prepareResponse(v1.Status_OK, "ConfigMap created successfully"), nil
+	return prepareResponse(v1.Status_OK, "ConfigMap created/updated successfully"), nil
 }
 
 //Delete all config maps for instance
