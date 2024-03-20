@@ -145,7 +145,10 @@ func (s *configServiceServer) FindGitlabProjectId(api *gitlab.Client, uid string
 		return -1, status.Errorf(codes.NotFound, "Gitlab Group for given domain does not exist")
 	}
 
-    project, _, err := api.Projects.GetProject(uid, &gitlab.GetProjectOptions{})
+    var projectName = "groups-" + domain + "%2F" + uid
+    logLine(fmt.Sprintf("Using given project name %s to obtain project id", projectName))
+
+    project, _, err := api.Projects.GetProject(projectName, &gitlab.GetProjectOptions{})
     if err != nil {
         log.Print(err)
         return -1, status.Errorf(codes.NotFound, "Gitlab Project for given uid does not exist")
